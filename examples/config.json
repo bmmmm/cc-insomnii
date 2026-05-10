@@ -1,0 +1,16 @@
+{
+  "bedtime": "23:00",
+  "dawn": "04:00",
+  "shame": {
+    "enabled": true
+  },
+  "motivation": {
+    "enabled": true
+  },
+  "rainbow": {
+    "enabled": true
+  },
+  "breathing": {
+    "enabled": true
+  }
+}

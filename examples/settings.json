@@ -1,0 +1,7 @@
+{
+  "_comment": "Add these keys to your ~/.claude/settings.json to enable insomnii as the Claude Code statusline.",
+  "statusLine": {
+    "type": "command",
+    "command": "insomnii"
+  }
+}

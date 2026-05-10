@@ -1,0 +1,417 @@
+#!/bin/bash
+# insomnii — bedtime shame statusline for Claude Code
+# Reads JSON from stdin (CC statusline payload), outputs one styled line.
+# No claudii deps. Requires: jq, bash 3.2+.
+
+set -euo pipefail
+
+# --- Guard: jq required ---
+if ! command -v jq >/dev/null 2>&1; then
+  printf 'insomnii: jq required\n' >&2; exit 1
+fi
+
+# --- Color constants (ANSI) ---
+RST=$'\033[0m'
+DIM=$'\033[2m'
+BOLD=$'\033[1m'
+BLINK=$'\033[5m'
+BLINK2=$'\033[6m'
+REVERSE=$'\033[7m'
+UNDERLINE=$'\033[4m'
+CYAN=$'\033[0;36m'
+GREEN=$'\033[0;32m'
+YELLOW=$'\033[0;33m'
+RED=$'\033[0;31m'
+WHITE=$'\033[0;97m'
+ACCENT=$'\033[38;5;213m'
+
+# --- Resolve INSOMNII_HOME (repo root = one level above this script) ---
+if [[ -z "${INSOMNII_HOME:-}" ]]; then
+  _script_dir="$(cd "$(dirname "$0")" && pwd)"
+  INSOMNII_HOME="$(dirname "$_script_dir")"
+fi
+
+# --- Built-in config defaults ---
+_cfg_bedtime="23:00"
+_cfg_dawn="04:00"
+_cfg_shame="true"
+_cfg_motivation="true"
+_cfg_rainbow="true"
+_cfg_breathing="true"
+
+# --- Load shipped messages (merged into _msg_* vars below) ---
+_messages_file="${INSOMNII_HOME}/config/shame-messages.json"
+
+# --- Layer 2: user config.json ---
+_user_cfg="${XDG_CONFIG_HOME:-$HOME/.config}/insomnii/config.json"
+if [[ -f "$_user_cfg" ]]; then
+  _v=$(jq -r '
+    [
+      (.bedtime          // ""),
+      (.dawn             // ""),
+      (."shame.enabled"  // ""),
+      (."motivation.enabled" // ""),
+      (."rainbow.enabled"    // ""),
+      (."breathing.enabled"  // "")
+    ] | join("\t")
+  ' "$_user_cfg" 2>/dev/null) || _v=""
+  IFS=$'\t' read -r _u1 _u2 _u3 _u4 _u5 _u6 <<< "$_v"
+  [[ -n "$_u1" ]] && _cfg_bedtime="$_u1"
+  [[ -n "$_u2" ]] && _cfg_dawn="$_u2"
+  [[ -n "$_u3" ]] && _cfg_shame="$_u3"
+  [[ -n "$_u4" ]] && _cfg_motivation="$_u4"
+  [[ -n "$_u5" ]] && _cfg_rainbow="$_u5"
+  [[ -n "$_u6" ]] && _cfg_breathing="$_u6"
+fi
+
+# --- Layer 3: user messages.json (override catalog) ---
+_user_msgs="${XDG_CONFIG_HOME:-$HOME/.config}/insomnii/messages.json"
+[[ -f "$_user_msgs" ]] && _messages_file="$_user_msgs"
+
+# --- Layer 4: env vars (highest priority) ---
+[[ -n "${INSOMNII_BEDTIME:-}"   ]] && _cfg_bedtime="$INSOMNII_BEDTIME"
+[[ -n "${INSOMNII_DAWN:-}"      ]] && _cfg_dawn="$INSOMNII_DAWN"
+[[ -n "${INSOMNII_SHAME:-}"     ]] && _cfg_shame="$INSOMNII_SHAME"
+[[ -n "${INSOMNII_MOTIVATION:-}" ]] && _cfg_motivation="$INSOMNII_MOTIVATION"
+[[ -n "${INSOMNII_RAINBOW:-}"   ]] && _cfg_rainbow="$INSOMNII_RAINBOW"
+[[ -n "${INSOMNII_BREATHING:-}" ]] && _cfg_breathing="$INSOMNII_BREATHING"
+[[ -n "${INSOMNII_MESSAGES:-}"  ]] && _messages_file="$INSOMNII_MESSAGES"
+
+# --- Parse stdin (single jq call) — graceful on empty/invalid JSON ---
+_json=$(cat)
+_now_epoch=$(date +%s)
+
+# We only need the timestamp from payload; everything else is time-derived.
+# Read session_start_time if present (unused for bedtime, but available).
+_payload_ts=$(printf '%s' "$_json" | jq -r '.timestamp // empty' 2>/dev/null) || _payload_ts=""
+
+# --- Time math ---
+_ts=$_now_epoch
+_hhmm=$(date +%H:%M)
+_now_h=$(date +%H); _now_m=$(date +%M)
+_now_h="${_now_h#0}"; _now_m="${_now_m#0}"
+_now_min=$(( ${_now_h:-0} * 60 + ${_now_m:-0} ))
+
+# Parse bedtime and dawn into minutes-since-midnight
+_parse_hhmm() {
+  local _t="$1" _h _m
+  if [[ "$_t" =~ ^([0-9]{1,2}):([0-9]{2})$ ]]; then
+    _h="${BASH_REMATCH[1]#0}"; _m="${BASH_REMATCH[2]#0}"
+    printf '%d' "$(( ${_h:-0} * 60 + ${_m:-0} ))"
+  else
+    printf '0'
+  fi
+}
+
+_bt_min=$(_parse_hhmm "$_cfg_bedtime")
+_dw_min=$(_parse_hhmm "$_cfg_dawn")
+
+# Delta since bedtime — wrap-aware (handles coding past midnight)
+_delta_min=$(( _now_min - _bt_min ))
+if (( _now_min < 360 && _bt_min >= 1080 )); then
+  # Before 6am, bedtime was in the evening — we crossed midnight
+  _delta_min=$(( _delta_min + 1440 ))
+fi
+
+# --- Sine approximation table for breathing pulse (32 steps, 0-100 scaled) ---
+# Precomputed: round(50 + 50*sin(2*pi*i/32)) for i in 0..31
+_SINE=(50 60 69 78 85 91 95 98 100 98 95 91 85 78 69 60 50 40 31 22 15 9 5 2 0 2 5 9 15 22 31 40)
+
+# breathing_color256(base_color, phase) — returns fg escape using 256-color ramp
+# We modulate between dim and bright versions of a given 256-color pair.
+_breathing_esc() {
+  local _base="$1" _phase="$2"
+  local _step=$(( _phase % 32 ))
+  local _brightness="${_SINE[$_step]}"
+  # Map brightness 0-100 onto color pairs: use closest in ramp
+  # For breathing we shift the 256-color index by ±12 around the base.
+  local _shift=$(( (_brightness - 50) * 12 / 50 ))
+  local _col=$(( _base + _shift ))
+  (( _col < 16 ))  && _col=16
+  (( _col > 231 )) && _col=231
+  printf '\033[38;5;%dm' "$_col"
+}
+
+# --- Glyph pools ---
+# Shared night pool (modes 0-4)
+_night_glyphs=("💤" "🌙" "🦉" "✨" "🌌" "😵" "🔥" "💀" "🫠" "👻" "🧠" "🛑" "⚠️" "🚨" "🌀" "🪦" "🧟" "🩸" "🌫️" "🌚" "🦴" "⏰" "🌛" "🛌" "🥱" "😴")
+
+# Mode-5 doom set (heavy death/decay)
+_doom_glyphs=("💀" "🪦" "🧟" "🩸" "🦴" "🌚" "😵" "🔥" "🛑" "🌀" "👁️" "⚰️" "🫀" "🫁" "🧠")
+
+# Mode-0 sparkle glyph (no pool, single)
+_sparkle_glyph="✦"
+
+# Matrix-rain charset for drip animation
+_drip_chars=("0" "1" "░" "▒" "▓" "█" "╳" "◢" "◣" "◤" "◥")
+
+# --- 24 color pairs for rainbow wave (fg;bg) — cycle every 3s ---
+_vibe_pairs=(
+  "219;53"  "51;17"   "226;88"  "201;54"
+  "87;18"   "220;52"  "213;90"  "46;22"
+  "99;57"   "196;52"  "45;18"   "214;88"
+  "183;54"  "159;17"  "208;52"  "129;18"
+  "171;54"  "39;17"   "203;52"  "118;22"
+  "227;88"  "105;57"  "43;18"   "212;53"
+)
+_np=${#_vibe_pairs[@]}
+
+# Rainbow palette (8 fg colors for wave)
+_vibe_rpal=(
+  $'\033[38;5;219m'
+  $'\033[38;5;51m'
+  $'\033[38;5;226m'
+  $'\033[38;5;213m'
+  $'\033[38;5;87m'
+  $'\033[38;5;201m'
+  $'\033[38;5;214m'
+  $'\033[38;5;99m'
+)
+
+# --- Determine render mode ---
+# Mode 0:  -30 ≤ delta < 0   (approaching bedtime, ≤30 min away)
+# Mode 1:    0 ≤ delta < 60  (bedtime to +1h)
+# Mode 2:   60 ≤ delta < 120 (+1h to +2h)
+# Mode 3:  120 ≤ delta < 180 (+2h to +3h)
+# Mode 4:  180 ≤ delta < 240 (+3h to +4h)
+# Mode 5:  delta ≥ 240 OR past dawn window
+# Morning: 07:00-15:59 (trumped by active shame)
+# Dawn:    04:00-06:59 (when not in shame)
+# Plain:   everything else
+
+_render_mode="plain"
+
+# Shame takes priority — check first
+if [[ "$_cfg_shame" != "false" ]] && (( _delta_min >= 0 )); then
+  if   (( _delta_min < 60  )); then _render_mode="mode1"
+  elif (( _delta_min < 120 )); then _render_mode="mode2"
+  elif (( _delta_min < 180 )); then _render_mode="mode3"
+  elif (( _delta_min < 240 )); then _render_mode="mode4"
+  else                              _render_mode="mode5"; fi
+  # Past dawn also triggers mode5 (dawn-override: still awake after sunrise)
+  if (( _dw_min > 0 && _now_min >= _dw_min && _now_min < 360 )); then
+    _render_mode="mode5"
+  fi
+elif (( _delta_min >= -30 && _delta_min < 0 )); then
+  _render_mode="mode0"
+elif [[ "$_cfg_motivation" != "false" ]] && (( _now_min >= 420 && _now_min < 960 )); then
+  _render_mode="motivation"
+elif (( _now_min >= _dw_min && _now_min < 420 && _dw_min < 420 )); then
+  _render_mode="dawn"
+fi
+
+# --- Pick shame/motivation message from catalog ---
+_pick_message() {
+  local _mode_num="$1"  # integer 0-5 for shame, "motivation", "dawn"
+  local _fallback="$2"
+  local _result=""
+
+  if [[ ! -f "$_messages_file" ]]; then
+    printf '%s' "$_fallback"; return
+  fi
+
+  case "$_mode_num" in
+    motivation)
+      _result=$(jq -r --argjson ts "$_ts" '
+        .motivation // [] | if length > 0 then .[($ts / 30 | floor) % length] else empty end
+      ' "$_messages_file" 2>/dev/null) ;;
+    dawn)
+      _result=$(jq -r --argjson ts "$_ts" '
+        .dawn // [] | if length > 0 then .[($ts / 30 | floor) % length] else empty end
+      ' "$_messages_file" 2>/dev/null) ;;
+    0)
+      _result=$(jq -r --argjson ts "$_ts" '
+        ."shame" // {} | ."0" // [] | if length > 0 then .[($ts / 30 | floor) % length] else empty end
+      ' "$_messages_file" 2>/dev/null) ;;
+    *)
+      # Accumulate all messages up to and including this mode
+      _result=$(jq -r --argjson mode "$_mode_num" --argjson ts "$_ts" '
+        .shame | [to_entries[] | select((.key | tonumber) <= $mode) | .value[]]
+        as $pool | if ($pool | length) > 0 then $pool[($ts / 30 | floor) % ($pool | length)] else empty end
+      ' "$_messages_file" 2>/dev/null) ;;
+  esac
+
+  [[ -z "$_result" || "$_result" == "null" ]] && _result="$_fallback"
+  printf '%s' "$_result"
+}
+
+# --- Build rainbow clock string ---
+# _build_rainbow <text> <wave_speed> <rbase> <blink_esc> <vibe_mode>
+_build_rainbow() {
+  local _text="$1" _speed="$2" _rb="$3" _bl="$4" _vm="$5"
+  local _n=${#_text} _wave _vi _dist _rc _out=""
+  _wave=$(( (_ts * _speed) % _n ))
+  for (( _vi=0; _vi<_n; _vi++ )); do
+    _dist=$(( (_vi - _wave + _n) % _n ))
+    _rc="${_vibe_rpal[$(( (_rb + _vi) % ${#_vibe_rpal[@]} ))]}"
+    case $_dist in
+      0) _out+="${BOLD}${_bl}${UNDERLINE}${_rc}${_text:$_vi:1}${RST}" ;;
+      1) _out+="${BOLD}${UNDERLINE}${_rc}${_text:$_vi:1}${RST}" ;;
+      2) _out+="${BOLD}${_rc}${_text:$_vi:1}${RST}" ;;
+      3) _out+="${_rc}${_text:$_vi:1}${RST}" ;;
+      *) _out+="${DIM}${_rc}${_text:$_vi:1}${RST}" ;;
+    esac
+  done
+  printf '%s' "$_out"
+}
+
+# --- Char decay: replace ~30% of clock chars with █ at mode 4+ ---
+# Uses _ts as seed so output is stable within one second.
+_apply_decay() {
+  local _text="$1" _out="" _i _ch _seed
+  _seed=$(( _ts % 997 ))  # prime mod for cheap pseudo-rand
+  for (( _i=0; _i<${#_text}; _i++ )); do
+    _ch="${_text:$_i:1}"
+    # Skip spaces and colon — keep structure legible
+    if [[ "$_ch" != " " && "$_ch" != ":" ]]; then
+      # Deterministic per-char hash: (seed * (i+1) * 31) % 10
+      _hash=$(( (_seed * (_i + 1) * 31) % 10 ))
+      (( _hash < 3 )) && _ch="█"
+    fi
+    _out+="$_ch"
+  done
+  printf '%s' "$_out"
+}
+
+# --- Matrix drip char (rotates based on time * 7) ---
+_drip_char() {
+  local _n=${#_drip_chars[@]}
+  local _idx=$(( (_ts * 7) % _n ))
+  printf '%s' "${_drip_chars[$_idx]}"
+}
+
+# --- Breathing color escape for a given 256-color base ---
+_breath_phase=$(( (_ts * 4) % 32 ))  # full cycle every 8 seconds
+
+# --- Render ---
+_output=""
+
+case "$_render_mode" in
+
+  # ---- MODE 0: sparkle approach (≤30 min before bedtime) ----
+  mode0)
+    # 4-second sparkle cycle: dim → normal → dim using sine brightness
+    _sp_phase=$(( (_ts % 4) * 8 ))  # maps 0-3s into 0,8,16,24 sine steps
+    if (( _cfg_breathing == 1 || _cfg_breathing == "true" )) || [[ "$_cfg_breathing" == "true" ]]; then
+      _sp_brightness="${_SINE[$_sp_phase]}"
+      if (( _sp_brightness < 40 )); then
+        _sp_clr="${DIM}${CYAN}"
+      elif (( _sp_brightness > 70 )); then
+        _sp_clr="${CYAN}${BOLD}"
+      else
+        _sp_clr="${CYAN}"
+      fi
+    else
+      _sp_clr="${CYAN}"
+    fi
+    _msg0=$(_pick_message 0 "almost time…")
+    _output="${_sp_clr}${_sparkle_glyph}${RST} ${DIM}${_hhmm}${RST}  ${DIM}${CYAN}${_msg0}${RST}"
+    ;;
+
+  # ---- MODES 1-5: shame escalation ----
+  mode1|mode2|mode3|mode4|mode5)
+    # Numeric mode for arithmetic
+    _vm="${_render_mode#mode}"
+
+    # Color pair for this render (cycle every 3s, 24 pairs)
+    IFS=';' read -r _pfg _pbg <<< "${_vibe_pairs[$(( (_ts / 3) % _np ))]}"
+    _VFG=$'\033[38;5;'"${_pfg}"'m'
+    _VBG=$'\033[48;5;'"${_pbg}"'m'
+    _rbase=$(( (_ts / 2) % ${#_vibe_rpal[@]} ))
+
+    # Blink type: mode 1-2 = slow, mode 3-4 = rapid, mode 4 alternates per second (strobe)
+    _blink="${BLINK}"
+    (( _vm >= 3 )) && _blink="${BLINK2}"
+    (( _vm >= 4 && _ts % 2 == 1 )) && _blink="${BLINK}"
+
+    # Wave speed scales with mode (chars/sec)
+    case "$_vm" in
+      1|2) _wave_speed=3 ;;
+      3)   _wave_speed=4 ;;
+      4)   _wave_speed=5 ;;
+      5)   _wave_speed=6 ;;
+      *)   _wave_speed=3 ;;
+    esac
+
+    # Time suffix (e.g. "+2h30m")
+    _ck_h=$(( _delta_min / 60 )); _ck_m=$(( _delta_min % 60 ))
+    if   (( _delta_min < 60  ));            then _ck_suffix=" +${_delta_min}m"
+    elif (( _ck_m == 0 ));                  then _ck_suffix=" +${_ck_h}h"
+    else                                         _ck_suffix=" +${_ck_h}h${_ck_m}m"; fi
+
+    _clock_text="${_hhmm}${_ck_suffix}"
+
+    # Mode 5: apply char decay to clock (glitch effect)
+    (( _vm >= 5 )) && _clock_text=$(_apply_decay "$_clock_text")
+
+    # Build rainbow clock (or plain if rainbow disabled)
+    if [[ "$_cfg_rainbow" != "false" ]]; then
+      _rainbow=$(_build_rainbow "$_clock_text" "$_wave_speed" "$_rbase" "$_blink" "$_vm")
+    else
+      _rainbow="${BOLD}${_clock_text}${RST}"
+    fi
+
+    # Glyph selection
+    if (( _vm >= 5 )); then
+      _glyph_pool=("${_doom_glyphs[@]}")
+    else
+      _glyph_pool=("${_night_glyphs[@]}")
+    fi
+    _np_g=${#_glyph_pool[@]}
+    _vg_idx=$(( (_ts / 5) % _np_g ))
+    _glyph="${_glyph_pool[$_vg_idx]}"
+
+    # Mode 5: two additional glyphs (independently rotating) for swarm
+    if (( _vm >= 5 )); then
+      _glyph2="${_glyph_pool[$(( ((_ts / 3) + 5) % _np_g ))]}"
+      _glyph3="${_glyph_pool[$(( ((_ts / 7) + 10) % _np_g ))]}"
+    fi
+
+    # Shame message
+    _vm_text=$(_pick_message "$_vm" "GO TO BED")
+
+    # Matrix drip prefix for mode 3+
+    _drip_prefix=""
+    (( _vm >= 3 )) && _drip_prefix=$(_drip_char)
+
+    # Shame text block — breathing modulates color at mode 1+ if enabled
+    _shame_fg="${_vibe_rpal[$(( (_rbase + 4) % ${#_vibe_rpal[@]} ))]}"
+    if [[ "$_cfg_breathing" == "true" ]] && (( _vm >= 1 )); then
+      # Breathing shifts the shame fg between rpal entries
+      _breath_offset=$(( ${_SINE[$_breath_phase]} * ${#_vibe_rpal[@]} / 100 ))
+      _shame_fg="${_vibe_rpal[$(( (_rbase + 4 + _breath_offset) % ${#_vibe_rpal[@]} ))]}"
+    fi
+
+    _shame_ul="";   (( _vm >= 2 )) && _shame_ul="${UNDERLINE}"
+    _shame_rev="";  (( _ts % 2 == 1 && _vm >= 4 )) && _shame_rev="${REVERSE}"
+    _shame_block="${_shame_rev}${_VBG}${_shame_fg}${BOLD}${_blink}${_shame_ul} ${_drip_prefix}${_vm_text} ${RST}"
+
+    # Assemble line based on mode
+    if (( _vm >= 5 )); then
+      # Glyph swarm: glyph1 <clock> glyph2<drip+shame>glyph3
+      _output="${_blink}${_glyph}${RST} ${_rainbow}  ${_glyph2}${_shame_block}${_glyph3}"
+    else
+      _output="${_blink}${_glyph}${RST} ${_rainbow}  ${_shame_block}"
+    fi
+    ;;
+
+  # ---- MOTIVATION: 07:00-15:59 ----
+  motivation)
+    _mot_text=$(_pick_message motivation "let's go")
+    _output="${DIM}${_sparkle_glyph} ${_hhmm}${RST}  ${CYAN}${_mot_text}${RST}"
+    ;;
+
+  # ---- DAWN: 04:00-06:59 ----
+  dawn)
+    _dawn_text=$(_pick_message dawn "still here?")
+    _output="${DIM}🌅 ${_hhmm}${RST}  ${WHITE}${_dawn_text}${RST}"
+    ;;
+
+  # ---- PLAIN: no shame, no special context ----
+  plain)
+    _output="${DIM}☾ ${_hhmm}${RST}"
+    ;;
+
+esac
+
+printf '%s\n' "$_output"
