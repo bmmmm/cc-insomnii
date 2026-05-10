@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# tests/run.sh — insomnii test harness
+# tests/run.sh — cc-insomnii test harness
 # Usage: bash tests/run.sh [--summary]
 set -euo pipefail
 

@@ -1,4 +1,4 @@
-# insomnii
+# cc-insomnii
 
 A Claude Code statusline that watches the clock and judges you for it.
 
@@ -6,7 +6,7 @@ A Claude Code statusline that watches the clock and judges you for it.
 
 ## What it is
 
-**insomnii** is a standalone statusline plugin for [Claude Code](https://docs.anthropic.com/en/docs/claude-code).
+**cc-insomnii** is a standalone statusline plugin for [Claude Code](https://docs.anthropic.com/en/docs/claude-code).
 It replaces the default statusline with a time-aware display that escalates
 through six modes of passive-aggressive clock imagery as your bedtime recedes
 into the past.
@@ -54,21 +54,21 @@ state.
 ## Install
 
 ```bash
-git clone https://github.com/bmmmm/insomnii.git
-cd insomnii
+git clone https://github.com/bmmmm/cc-insomnii.git
+cd cc-insomnii
 bash install.sh
 ```
 
-Non-root (installs to `~/.local/share/insomnii`, symlinks to `~/.local/bin/`):
+Non-root (installs to `~/.local/share/cc-insomnii`, symlinks to `~/.local/bin/`):
 
 ```bash
-bash install.sh --prefix=~/.local/share/insomnii
+bash install.sh --prefix=~/.local/share/cc-insomnii
 ```
 
 Custom prefix:
 
 ```bash
-bash install.sh --prefix=/opt/insomnii
+bash install.sh --prefix=/opt/cc-insomnii
 ```
 
 Uninstall:
@@ -86,22 +86,63 @@ After installing, the script prints the exact JSON snippet to add to
 
 ### Claude Code settings
 
-Add to `~/.claude/settings.json`:
+There are two paths depending on whether you already have a richer statusline.
+
+**Standalone (no other statusline plugin):** add to `~/.claude/settings.json`:
 
 ```json
 {
   "statusLine": {
     "type": "command",
-    "command": "insomnii"
+    "command": "cc-insomnii"
   }
 }
 ```
 
 See `examples/settings.json` for a copy-paste snippet.
 
+**With [claudii](https://github.com/bmmmm/claudii) installed:** do NOT change
+`~/.claude/settings.json`. Keep `claudii-cc-statusline` as your statusLine and
+claudii will auto-delegate the clock segment to cc-insomnii (`statusline.cc-insomnii=auto`,
+the default). Verify with:
+
+```bash
+claudii doctor | grep cc-insomnii
+# → ✓ cc-insomnii detected (/usr/local/bin/cc-insomnii) — clock segment active (mode=auto)
+```
+
+To force-disable delegation: `claudii config statusline.cc-insomnii off`. Make
+sure `clock` is in your layout (`claudii config statusline.lines ...`).
+
+**With another cc-statusline framework:** use `--after=<cmd>` to put cc-insomnii
+ON TOP of your existing tool instead of replacing it. cc-insomnii's line is
+**always the first/top line**; the wrapped command's output appears below it:
+
+```json
+{
+  "statusLine": {
+    "type": "command",
+    "command": "cc-insomnii --after=my-existing-statusline"
+  }
+}
+```
+
+Renders as:
+
+```
+😵 03:14 +4h14m   GO TO BED          ← cc-insomnii (always top)
+Sonnet 4.6 | $0.42 | 5h:62% | ...    ← your existing statusline (below)
+```
+
+The installer auto-detects an existing `statusLine.command` and prints this
+snippet for you (marked `RECOMMENDED`). The wrapped command gets the same
+JSON payload Claude Code sent to cc-insomnii, so nothing changes from its
+perspective. If the wrapped command fails or prints nothing, cc-insomnii's line
+still renders cleanly — graceful degradation.
+
 ### User config
 
-Create `~/.config/insomnii/config.json` (or `$XDG_CONFIG_HOME/insomnii/config.json`):
+Create `~/.config/cc-insomnii/config.json` (or `$XDG_CONFIG_HOME/cc-insomnii/config.json`):
 
 ```json
 {
@@ -121,21 +162,21 @@ See `examples/config.json` for the full reference with all keys.
 All settings can be overridden via environment variables. These take precedence
 over `config.json`.
 
-| Variable              | Default   | Description                                      |
-|-----------------------|-----------|--------------------------------------------------|
-| `INSOMNII_HOME`       | auto      | Path to insomnii install dir                     |
-| `INSOMNII_BEDTIME`    | `23:00`   | Bedtime in HH:MM (24h)                           |
-| `INSOMNII_DAWN`       | `04:00`   | Dawn threshold — triggers mode 5 regardless      |
-| `INSOMNII_SHAME`      | `true`    | Enable shame messages                            |
-| `INSOMNII_MOTIVATION` | `true`    | Enable morning motivation (07:00-15:59)          |
-| `INSOMNII_RAINBOW`    | `true`    | Enable rainbow character-chase animation         |
-| `INSOMNII_BREATHING`  | `true`    | Enable breathing pulse on glyph                  |
-| `INSOMNII_CONFIG`     | (auto)    | Override config file path                        |
-| `INSOMNII_MESSAGES`   | (auto)    | Override shame messages file path                |
+| Variable                 | Default   | Description                                      |
+|--------------------------|-----------|--------------------------------------------------|
+| `CC_INSOMNII_HOME`       | auto      | Path to cc-insomnii install dir                  |
+| `CC_INSOMNII_BEDTIME`    | `23:00`   | Bedtime in HH:MM (24h)                           |
+| `CC_INSOMNII_DAWN`       | `04:00`   | Dawn threshold — triggers mode 5 regardless      |
+| `CC_INSOMNII_SHAME`      | `true`    | Enable shame messages                            |
+| `CC_INSOMNII_MOTIVATION` | `true`    | Enable morning motivation (07:00-15:59)          |
+| `CC_INSOMNII_RAINBOW`    | `true`    | Enable rainbow character-chase animation         |
+| `CC_INSOMNII_BREATHING`  | `true`    | Enable breathing pulse on glyph                  |
+| `CC_INSOMNII_CONFIG`     | (auto)    | Override config file path                        |
+| `CC_INSOMNII_MESSAGES`   | (auto)    | Override shame messages file path                |
 
 ### Custom shame messages
 
-Copy `config/shame-messages.json` to `~/.config/insomnii/messages.json` and
+Copy `config/shame-messages.json` to `~/.config/cc-insomnii/messages.json` and
 edit it. When that file exists, it replaces the shipped message catalog
 entirely.
 
@@ -146,7 +187,7 @@ entirely.
 The `examples/` directory contains:
 
 - `settings.json` — the `~/.claude/settings.json` snippet
-- `config.json` — full `~/.config/insomnii/config.json` reference
+- `config.json` — full `~/.config/cc-insomnii/config.json` reference
 
 ---
 
@@ -183,8 +224,9 @@ bash tests/run.sh --summary
 
 The bedtime shaming logic originated in
 [claudii](https://github.com/bmmmm/claudii) (`bin/claudii-cc-statusline`,
-lines 422-557). The rainbow character-chase animation, vibe-coma mode naming,
-glyph rotation, and time-driven math are all from that implementation.
+lines 422-557) where it was first named `insomnii`. The rainbow character-chase
+animation, vibe-coma mode naming, glyph rotation, and time-driven math are all
+from that implementation.
 
 Statusline protocol inspiration: [wynandw87/claude-code-status-line](https://github.com/wynandw87/claude-code-status-line)
 and [jarrodwatts/claude-hud](https://github.com/jarrodwatts/claude-hud).

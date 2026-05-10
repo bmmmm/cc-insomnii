@@ -1,14 +1,14 @@
-.TH INSOMNII 1 "2026-05-10" "insomnii 0.1.0" "User Commands"
+.TH CC-INSOMNII 1 "2026-05-10" "cc-insomnii 0.1.0" "User Commands"
 .SH NAME
-insomnii \- bedtime shaming statusline for Claude Code
+cc-insomnii \- bedtime shaming statusline for Claude Code
 .SH SYNOPSIS
-.B insomnii
+.B cc-insomnii
 [\fIOPTIONS\fR]
 .br
 echo \fIJSON\fR |
-.B insomnii
+.B cc-insomnii
 .SH DESCRIPTION
-.B insomnii
+.B cc-insomnii
 is a Claude Code statusline plugin that monitors the current time relative to a
 configured bedtime and escalates its output through six modes of increasing
 urgency as the night wears on.
@@ -18,7 +18,7 @@ writes a formatted statusline string to stdout. The output uses ANSI escape
 codes and is designed to be rendered directly in the Claude Code terminal.
 
 When all is well and it is not yet close to bedtime,
-.B insomnii
+.B cc-insomnii
 shows a plain clock glyph with the current time. As bedtime approaches and
 passes, the display escalates through warning colors, blinking animations,
 rainbow character-chase effects, rotating shame messages, and finally a full
@@ -28,6 +28,41 @@ Morning motivation messages are shown between 07:00 and 15:59 when shame is
 not active, as a small reward for having survived the night.
 .SH OPTIONS
 .TP
+.BI \-\-after= CMD
+Composition mode. Renders the cc-insomnii line FIRST (always the top line),
+then feeds the same stdin JSON to
+.I CMD
+and prints
+.IR CMD 's
+output verbatim below. Use this to put cc-insomnii ON TOP of an existing
+statusline tool instead of replacing it \(em the user keeps every metric
+the original renders, with the bedtime nudge as the prominent top line. If
+.I CMD
+fails or its output is empty, the cc-insomnii line still renders cleanly
+(graceful degradation).
+.IP
+Example
+.B settings.json
+entry:
+.IP
+.RS
+.nf
+{
+  "statusLine": {
+    "type": "command",
+    "command": "cc-insomnii --after=my-existing-statusline"
+  }
+}
+.fi
+.RE
+.IP
+The
+.BR install.sh (1)
+helper detects an existing
+.B statusLine.command
+and prints this snippet for you, marked
+.BR RECOMMENDED .
+.TP
 .B \-\-help
 Print usage and exit.
 .TP
@@ -35,56 +70,56 @@ Print usage and exit.
 Print version and exit.
 .SH ENVIRONMENT
 .TP
-.B INSOMNII_HOME
-Path to the insomnii installation directory. Used to locate
+.B CC_INSOMNII_HOME
+Path to the cc-insomnii installation directory. Used to locate
 .IR config/shame-messages.json .
 .TP
-.B INSOMNII_BEDTIME
+.B CC_INSOMNII_BEDTIME
 Bedtime in
 .I HH:MM
 24-hour format. Default:
 .BR 23:00 .
 .TP
-.B INSOMNII_DAWN
+.B CC_INSOMNII_DAWN
 Dawn threshold in
 .I HH:MM
 24-hour format. Coding past this time triggers mode 5 regardless of elapsed
 time since bedtime. Default:
 .BR 04:00 .
 .TP
-.B INSOMNII_SHAME
+.B CC_INSOMNII_SHAME
 Enable or disable shame messages. Set to
 .B false
 to silence them. Default:
 .BR true .
 .TP
-.B INSOMNII_MOTIVATION
+.B CC_INSOMNII_MOTIVATION
 Enable or disable morning motivation messages (07:00\-15:59). Set to
 .B false
 to disable. Default:
 .BR true .
 .TP
-.B INSOMNII_RAINBOW
+.B CC_INSOMNII_RAINBOW
 Enable or disable the rainbow character-chase animation on the clock display.
 Set to
 .B false
 for plain bold text. Default:
 .BR true .
 .TP
-.B INSOMNII_BREATHING
+.B CC_INSOMNII_BREATHING
 Enable or disable the breathing pulse animation on the glyph. Default:
 .BR true .
 .TP
-.B INSOMNII_CONFIG
+.B CC_INSOMNII_CONFIG
 Override path to the user config file. Default:
-.IR ${XDG_CONFIG_HOME:-$HOME/.config}/insomnii/config.json .
+.IR ${XDG_CONFIG_HOME:-$HOME/.config}/cc-insomnii/config.json .
 .TP
-.B INSOMNII_MESSAGES
+.B CC_INSOMNII_MESSAGES
 Override path to the shame messages file. When set, replaces the shipped
 .IR config/shame-messages.json .
 .SH CONFIGURATION
 User configuration is read from
-.IR ${XDG_CONFIG_HOME:-$HOME/.config}/insomnii/config.json .
+.IR ${XDG_CONFIG_HOME:-$HOME/.config}/cc-insomnii/config.json .
 All keys are optional; missing keys fall back to compiled defaults.
 .PP
 Example:
@@ -103,9 +138,9 @@ Example:
 .PP
 See
 .I examples/config.json
-in the insomnii installation directory for a fully commented reference.
+in the cc-insomnii installation directory for a fully commented reference.
 .SH MODES
-.B insomnii
+.B cc-insomnii
 escalates through six modes based on the current time relative to bedtime:
 .TP
 .B Mode 0 \- Warning
@@ -135,21 +170,23 @@ More than 4 hours past bedtime, or current time is past the dawn threshold
 (default 04:00). Full doom mode. You are no longer making good decisions.
 .SH FILES
 .TP
-.I ${INSOMNII_HOME}/config/shame-messages.json
+.I ${CC_INSOMNII_HOME}/config/shame-messages.json
 Shipped shame and motivation message catalog.
 .TP
-.I ${XDG_CONFIG_HOME:-$HOME/.config}/insomnii/config.json
+.I ${XDG_CONFIG_HOME:-$HOME/.config}/cc-insomnii/config.json
 User configuration file.
 .TP
-.I ${XDG_CONFIG_HOME:-$HOME/.config}/insomnii/messages.json
+.I ${XDG_CONFIG_HOME:-$HOME/.config}/cc-insomnii/messages.json
 User message override. When present, replaces the shipped message catalog
 entirely.
 .TP
-.I /usr/local/bin/insomnii
+.I /usr/local/bin/cc-insomnii
 Default symlink location for the binary (or
-.I ~/.local/bin/insomnii
+.I ~/.local/bin/cc-insomnii
 for non-root installs).
 .SH SEE ALSO
-.BR claudii (1)
+.BR claudii (1),
+.BR cc-insomnii (1)
 .SH AUTHORS
 bmmmm. Extracted from the claudii project (https://github.com/bmmmm/claudii).
+Rebranded from insomnii to cc-insomnii (https://github.com/bmmmm/cc-insomnii).

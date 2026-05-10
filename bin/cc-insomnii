@@ -1,5 +1,5 @@
 #!/bin/bash
-# insomnii — bedtime shame statusline for Claude Code
+# cc-insomnii — bedtime shame statusline for Claude Code
 # Reads JSON from stdin (CC statusline payload), outputs one styled line.
 # No claudii deps. Requires: jq, bash 3.2+.
 
@@ -7,7 +7,7 @@ set -euo pipefail
 
 # --- Guard: jq required ---
 if ! command -v jq >/dev/null 2>&1; then
-  printf 'insomnii: jq required\n' >&2; exit 1
+  printf 'cc-insomnii: jq required\n' >&2; exit 1
 fi
 
 # --- Color constants (ANSI) ---
@@ -25,10 +25,19 @@ RED=$'\033[0;31m'
 WHITE=$'\033[0;97m'
 ACCENT=$'\033[38;5;213m'
 
-# --- Resolve INSOMNII_HOME (repo root = one level above this script) ---
-if [[ -z "${INSOMNII_HOME:-}" ]]; then
-  _script_dir="$(cd "$(dirname "$0")" && pwd)"
-  INSOMNII_HOME="$(dirname "$_script_dir")"
+# --- Resolve CC_INSOMNII_HOME (repo root = one level above this script) ---
+# Follow symlinks so a `ln -s /opt/cc-insomnii/bin/cc-insomnii /usr/local/bin/cc-insomnii`
+# install still finds the shipped config/ next to the real binary, not next to
+# the symlink. macOS bash 3.2 has no `readlink -f`, so we walk the chain by hand.
+if [[ -z "${CC_INSOMNII_HOME:-}" ]]; then
+  _self="${BASH_SOURCE[0]:-$0}"
+  while [[ -L "$_self" ]]; do
+    _link=$(readlink "$_self")
+    if [[ "$_link" = /* ]]; then _self="$_link"
+    else _self="$(cd "$(dirname "$_self")" && pwd)/$_link"; fi
+  done
+  _script_dir="$(cd "$(dirname "$_self")" && pwd)"
+  CC_INSOMNII_HOME="$(dirname "$_script_dir")"
 fi
 
 # --- Built-in config defaults ---
@@ -40,10 +49,10 @@ _cfg_rainbow="true"
 _cfg_breathing="true"
 
 # --- Load shipped messages (merged into _msg_* vars below) ---
-_messages_file="${INSOMNII_HOME}/config/shame-messages.json"
+_messages_file="${CC_INSOMNII_HOME}/config/shame-messages.json"
 
 # --- Layer 2: user config.json ---
-_user_cfg="${XDG_CONFIG_HOME:-$HOME/.config}/insomnii/config.json"
+_user_cfg="${XDG_CONFIG_HOME:-$HOME/.config}/cc-insomnii/config.json"
 if [[ -f "$_user_cfg" ]]; then
   _v=$(jq -r '
     [
@@ -65,17 +74,58 @@ if [[ -f "$_user_cfg" ]]; then
 fi
 
 # --- Layer 3: user messages.json (override catalog) ---
-_user_msgs="${XDG_CONFIG_HOME:-$HOME/.config}/insomnii/messages.json"
+_user_msgs="${XDG_CONFIG_HOME:-$HOME/.config}/cc-insomnii/messages.json"
 [[ -f "$_user_msgs" ]] && _messages_file="$_user_msgs"
 
 # --- Layer 4: env vars (highest priority) ---
-[[ -n "${INSOMNII_BEDTIME:-}"   ]] && _cfg_bedtime="$INSOMNII_BEDTIME"
-[[ -n "${INSOMNII_DAWN:-}"      ]] && _cfg_dawn="$INSOMNII_DAWN"
-[[ -n "${INSOMNII_SHAME:-}"     ]] && _cfg_shame="$INSOMNII_SHAME"
-[[ -n "${INSOMNII_MOTIVATION:-}" ]] && _cfg_motivation="$INSOMNII_MOTIVATION"
-[[ -n "${INSOMNII_RAINBOW:-}"   ]] && _cfg_rainbow="$INSOMNII_RAINBOW"
-[[ -n "${INSOMNII_BREATHING:-}" ]] && _cfg_breathing="$INSOMNII_BREATHING"
-[[ -n "${INSOMNII_MESSAGES:-}"  ]] && _messages_file="$INSOMNII_MESSAGES"
+[[ -n "${CC_INSOMNII_BEDTIME:-}"   ]] && _cfg_bedtime="$CC_INSOMNII_BEDTIME"
+[[ -n "${CC_INSOMNII_DAWN:-}"      ]] && _cfg_dawn="$CC_INSOMNII_DAWN"
+[[ -n "${CC_INSOMNII_SHAME:-}"     ]] && _cfg_shame="$CC_INSOMNII_SHAME"
+[[ -n "${CC_INSOMNII_MOTIVATION:-}" ]] && _cfg_motivation="$CC_INSOMNII_MOTIVATION"
+[[ -n "${CC_INSOMNII_RAINBOW:-}"   ]] && _cfg_rainbow="$CC_INSOMNII_RAINBOW"
+[[ -n "${CC_INSOMNII_BREATHING:-}" ]] && _cfg_breathing="$CC_INSOMNII_BREATHING"
+[[ -n "${CC_INSOMNII_MESSAGES:-}"  ]] && _messages_file="$CC_INSOMNII_MESSAGES"
+
+# --- CLI args ---
+# --after=CMD lets cc-insomnii sit ON TOP of an existing cc-statusline tool
+# instead of replacing it. cc-insomnii reads stdin once, renders its own line
+# FIRST (always the top line), then feeds the same JSON to CMD and prints
+# CMD's output below. The user keeps every metric the original tool renders
+# and gains the bedtime nudge as the prominent top line — no loss, no
+# reorder, just cc-insomnii prepended.
+WRAP_AFTER=""
+for _arg in "$@"; do
+  case "$_arg" in
+    --after=*) WRAP_AFTER="${_arg#--after=}" ;;
+    --help|-h)
+      cat <<'HELP'
+cc-insomnii — bedtime shame statusline for Claude Code.
+
+USAGE
+  cc-insomnii                Read JSON from stdin, render one styled status line.
+  cc-insomnii --after=CMD    Render the cc-insomnii line FIRST (always the top
+                             line), then feed the same JSON to CMD and print
+                             CMD's output below. Use this when you already have
+                             a richer statusLine and want cc-insomnii on top of it
+                             (not replacing it).
+  cc-insomnii --help         Show this help.
+
+CONFIG
+  Env: CC_INSOMNII_BEDTIME, CC_INSOMNII_DAWN, CC_INSOMNII_SHAME, CC_INSOMNII_MOTIVATION,
+       CC_INSOMNII_RAINBOW, CC_INSOMNII_BREATHING, CC_INSOMNII_MESSAGES, CC_INSOMNII_HOME
+  File: $XDG_CONFIG_HOME/cc-insomnii/config.json (or ~/.config/cc-insomnii/config.json)
+  Catalog override: $XDG_CONFIG_HOME/cc-insomnii/messages.json
+
+See cc-insomnii(1) for the full documentation.
+HELP
+      exit 0
+      ;;
+    *)
+      printf 'cc-insomnii: unknown argument: %s (try --help)\n' "$_arg" >&2
+      exit 2
+      ;;
+  esac
+done
 
 # --- Parse stdin (single jq call) — graceful on empty/invalid JSON ---
 _json=$(cat)
@@ -415,3 +465,15 @@ case "$_render_mode" in
 esac
 
 printf '%s\n' "$_output"
+
+# --- Composition (--after=CMD): cc-insomnii line is rendered FIRST (always at
+# the top), then CMD's output is piped through and printed below. Failures
+# in CMD are silenced so cc-insomnii's line stays clean even if the wrapped
+# tool breaks. Trailing newline is normalized to keep the layout tidy.
+if [[ -n "$WRAP_AFTER" ]]; then
+  _wrapped_out=$(printf '%s' "$_json" | eval "$WRAP_AFTER" 2>/dev/null) || true
+  if [[ -n "$_wrapped_out" ]]; then
+    printf '%s' "$_wrapped_out"
+    [[ "$_wrapped_out" != *$'\n' ]] && printf '\n'
+  fi
+fi

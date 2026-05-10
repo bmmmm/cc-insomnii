@@ -1,18 +1,18 @@
 #!/usr/bin/env bash
-# tests/test_smoke.sh — basic smoke test for bin/insomnii
+# tests/test_smoke.sh — basic smoke test for bin/cc-insomnii
 # Feeds a minimal JSON payload and checks exit 0 + HH:MM in output.
 set -euo pipefail
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-BIN="$REPO_ROOT/bin/insomnii"
+BIN="$REPO_ROOT/bin/cc-insomnii"
 
 if [[ ! -f "$BIN" ]]; then
-  echo "SKIP bin/insomnii not found — skipping smoke test"
+  echo "SKIP bin/cc-insomnii not found — skipping smoke test"
   exit 0
 fi
 
-if ! command -v insomnii >/dev/null 2>&1 && [[ ! -x "$BIN" ]]; then
-  echo "SKIP bin/insomnii not executable"
+if ! command -v cc-insomnii >/dev/null 2>&1 && [[ ! -x "$BIN" ]]; then
+  echo "SKIP bin/cc-insomnii not executable"
   exit 0
 fi
 
