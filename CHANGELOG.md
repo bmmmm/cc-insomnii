@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- mode0: `_cfg_breathing` comparison used arithmetic context `(( ))` with string value "true"; bash treats unquoted `true` as a variable name which is unbound under `set -u`. Replaced with `[[ ]]` string comparison — no behavior change.
+
 ## [0.1.0] - 2026-05-10
 
 ### Added
