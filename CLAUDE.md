@@ -1,6 +1,8 @@
 # cc-insomnii
 
-<\!-- TODO: 1–3 sentence description of what this project does. -->
+Standalone bedtime-shame statusline plugin for Claude Code.
+Extracted from claudii — no claudii dependency. Replaces the default Claude Code statusline
+with a time-aware display that escalates through passive-aggressive clock imagery as bedtime recedes.
 
 ## Identity
 
@@ -13,6 +15,38 @@ See `~/ops/runbooks/identity-setup.md`.
 - Cross-repo notes, runbooks, audits: `~/ops/`
 - Per-repo intent (current focus, blockers, next): `~/ops/projects/cc-insomnii.md`
 
-## Build / Test
+## Install / Uninstall
 
-<\!-- TODO: project-specific build, test, run commands. -->
+```bash
+bash install.sh           # install to ~/.local/share/cc-insomnii
+bash install.sh --uninstall
+# or via Make:
+make install
+make uninstall
+```
+
+## Testing
+
+```bash
+make test                 # bash tests/run.sh
+make lint                 # shellcheck bin/cc-insomnii
+```
+
+## Architecture
+
+```
+bin/cc-insomnii           # Main script — reads stdin JSON (CC statusline payload), outputs one line
+lib/                      # Sub-libraries loaded by bin/cc-insomnii
+config/                   # Default config (bedtime, shame messages)
+man/                      # Man page
+examples/                 # Example configs
+tests/                    # Test suite
+install.sh                # Installer
+```
+
+## Key constraints
+
+- **No runtime deps beyond bash 3.2 + jq** — zero dependency on claudii or other tools.
+- Reads Claude Code statusline JSON from stdin, writes one styled line to stdout.
+- Shame messages and bedtime are configurable; the feature itself is not optional.
+- Compatible with macOS `/bin/bash` 3.2 — no `declare -A`, no `(( var++ ))` on counters.
