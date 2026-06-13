@@ -5,6 +5,9 @@
 
 set -euo pipefail
 
+# Version — keep in sync with man/man1/cc-insomnii.1 (.TH) and CHANGELOG.md.
+_VERSION="0.1.0"
+
 # --- Guard: jq required ---
 if ! command -v jq >/dev/null 2>&1; then
   printf 'cc-insomnii: jq required\n' >&2; exit 1
@@ -52,7 +55,7 @@ _cfg_breathing="true"
 _messages_file="${CC_INSOMNII_HOME}/config/shame-messages.json"
 
 # --- Layer 2: user config.json ---
-_user_cfg="${XDG_CONFIG_HOME:-$HOME/.config}/cc-insomnii/config.json"
+_user_cfg="${CC_INSOMNII_CONFIG:-${XDG_CONFIG_HOME:-$HOME/.config}/cc-insomnii/config.json}"
 if [[ -f "$_user_cfg" ]]; then
   # Read nested keys (.shame.enabled, not the literal flat key "shame.enabled").
   # Map null→"" explicitly instead of `// ""`: jq's `//` treats a literal `false`
@@ -120,12 +123,16 @@ USAGE
 
 CONFIG
   Env: CC_INSOMNII_BEDTIME, CC_INSOMNII_DAWN, CC_INSOMNII_SHAME, CC_INSOMNII_MOTIVATION,
-       CC_INSOMNII_RAINBOW, CC_INSOMNII_BREATHING, CC_INSOMNII_MESSAGES, CC_INSOMNII_HOME
+       CC_INSOMNII_RAINBOW, CC_INSOMNII_BREATHING, CC_INSOMNII_CONFIG, CC_INSOMNII_MESSAGES, CC_INSOMNII_HOME
   File: $XDG_CONFIG_HOME/cc-insomnii/config.json (or ~/.config/cc-insomnii/config.json)
   Catalog override: $XDG_CONFIG_HOME/cc-insomnii/messages.json
 
 See cc-insomnii(1) for the full documentation.
 HELP
+      exit 0
+      ;;
+    --version|-V)
+      printf 'cc-insomnii %s\n' "$_VERSION"
       exit 0
       ;;
     *)
