@@ -18,8 +18,12 @@ fi
 
 PAYLOAD='{"model":{"display_name":"Sonnet"}}'
 
+# Capture without aborting under `set -e` (a failing `$(…)` would exit here
+# before `rc=$?`, hiding the real exit code we want to assert on).
+set +e
 output=$(echo "$PAYLOAD" | "$BIN" 2>&1)
 rc=$?
+set -e
 
 if (( rc != 0 )); then
   echo "FAIL exit code $rc (expected 0)"

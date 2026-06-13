@@ -16,8 +16,12 @@ for test_file in "$TESTS_DIR"/test_*.sh; do
   [[ -f "$test_file" ]] || continue
   name="$(basename "$test_file" .sh)"
 
+  # Capture without aborting: under `set -e` a failing `var=$(cmd)` exits the
+  # script before `rc=$?` runs, which would swallow the failure entirely.
+  set +e
   output=$(bash "$test_file" 2>&1)
   rc=$?
+  set -e
 
   if echo "$output" | grep -q "^SKIP"; then
     (( ++skip ))
@@ -30,7 +34,7 @@ for test_file in "$TESTS_DIR"/test_*.sh; do
     errors+=("$name")
     if (( SUMMARY == 0 )); then
       printf "  FAIL  %s\n" "$name"
-      echo "$output" | sed 's/^/         /'
+      while IFS= read -r line; do printf '         %s\n' "$line"; done <<< "$output"
     fi
   fi
 done
