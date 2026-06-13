@@ -10,7 +10,7 @@ test:
 	bash tests/run.sh
 
 lint:
-	shellcheck bin/cc-insomnii
+	shellcheck bin/cc-insomnii install.sh tests/*.sh scripts/*.sh
 
 clean:
 	rm -rf tmp/

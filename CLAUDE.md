@@ -29,7 +29,7 @@ make uninstall
 
 ```bash
 make test                 # bash tests/run.sh
-make lint                 # shellcheck bin/cc-insomnii
+make lint                 # shellcheck bin/ + install.sh + tests/ + scripts/
 ```
 
 ## Architecture
