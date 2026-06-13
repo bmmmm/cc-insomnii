@@ -22,11 +22,7 @@ BLINK2=$'\033[6m'
 REVERSE=$'\033[7m'
 UNDERLINE=$'\033[4m'
 CYAN=$'\033[0;36m'
-GREEN=$'\033[0;32m'
-YELLOW=$'\033[0;33m'
-RED=$'\033[0;31m'
 WHITE=$'\033[0;97m'
-ACCENT=$'\033[38;5;213m'
 
 # --- Resolve CC_INSOMNII_HOME (repo root = one level above this script) ---
 # Follow symlinks so a `ln -s /opt/cc-insomnii/bin/cc-insomnii /usr/local/bin/cc-insomnii`
@@ -142,18 +138,11 @@ HELP
   esac
 done
 
-# --- Parse stdin (single jq call) — graceful on empty/invalid JSON ---
+# --- Read stdin (consumed once; reused below for --after composition) ---
 _json=$(cat)
-_now_epoch=$(date +%s)
 
-# We only need the timestamp from payload; everything else is time-derived.
-# Read session_start_time if present (unused for bedtime, but available).
-_payload_ts=$(printf '%s' "$_json" | jq -r '.timestamp // empty' 2>/dev/null) || _payload_ts=""
-
-# --- Time math ---
-_ts=$_now_epoch
-_hhmm=$(date +%H:%M)
-_now_h=$(date +%H); _now_m=$(date +%M)
+# --- Time math — one date call keeps every field on the same second ---
+IFS='|' read -r _ts _hhmm _now_h _now_m <<< "$(date '+%s|%H:%M|%H|%M')"
 _now_h="${_now_h#0}"; _now_m="${_now_m#0}"
 _now_min=$(( ${_now_h:-0} * 60 + ${_now_m:-0} ))
 
@@ -181,21 +170,6 @@ fi
 # --- Sine approximation table for breathing pulse (32 steps, 0-100 scaled) ---
 # Precomputed: round(50 + 50*sin(2*pi*i/32)) for i in 0..31
 _SINE=(50 60 69 78 85 91 95 98 100 98 95 91 85 78 69 60 50 40 31 22 15 9 5 2 0 2 5 9 15 22 31 40)
-
-# breathing_color256(base_color, phase) — returns fg escape using 256-color ramp
-# We modulate between dim and bright versions of a given 256-color pair.
-_breathing_esc() {
-  local _base="$1" _phase="$2"
-  local _step=$(( _phase % 32 ))
-  local _brightness="${_SINE[$_step]}"
-  # Map brightness 0-100 onto color pairs: use closest in ramp
-  # For breathing we shift the 256-color index by ±12 around the base.
-  local _shift=$(( (_brightness - 50) * 12 / 50 ))
-  local _col=$(( _base + _shift ))
-  (( _col < 16 ))  && _col=16
-  (( _col > 231 )) && _col=231
-  printf '\033[38;5;%dm' "$_col"
-}
 
 # --- Glyph pools ---
 # Shared night pool (modes 0-4)
