@@ -26,26 +26,25 @@ because that is the correct scope for this kind of thing.
 ## Demo
 
 ```
-[normal, 22:30]     ☾ 22:30
+[plain, 22:30]       ☾ 22:30
 
-[warning, 22:45]    ☾ 22:45
+[approaching, 22:45] ✦ 22:45  almost time…             (cyan sparkle, breathing pulse)
 
-[approaching, 22:58] ☾ 22:58
+[mode 1, 23:14]     🌙 23:14 +14m   GO TO BED           (rainbow clock + shame, slow blink)
 
-[mode 1, 23:14]     ☾ 23:14 +14m         (blinking red)
+[mode 2, 00:21]     🦉 00:21 +1h21m   BRAIN = MUSH       (+ underline)
 
-[mode 2, 00:21]     🌙 00:21 +1h21m   GO TO BED   (rainbow clock, shame)
+[mode 3, 01:47]     💤 01:47 +2h47m   KERNEL PANIC — YOU (+ matrix-drip prefix, rapid blink)
 
-[mode 3, 01:47]     💤 01:47 +2h47m   THIS IS GETTING RIDICULOUS   (underline, rapid blink)
+[mode 4, 02:35]     🔥 02:35 +3h35m   COMMIT AND SLEEP   (+ reverse pulse on odd seconds, strobe)
 
-[mode 4, 03:05]     🔥 03:05 +4h5m    COMMIT AND SLEEP   (reverse pulse, strobe)
-
-[mode 5, 04:12]     💀 04:12 +5h12m   DAWN. WHY.   (full doom)
+[mode 5, 04:12]     💀 04:12 +5h12m   GOOD MORNING. GOODBYE.   (char-decay clock, glyph swarm, doom)
 ```
 
-The clock glyph rotates through a pool of 15 options. The color pair shifts
-every 4 seconds. The wave chases across the clock digits at 3 characters per
-second. All of this happens through time-driven math on the Unix timestamp, so
+The clock glyph rotates through a 26-glyph night pool (a separate 15-glyph doom
+set takes over at mode 5). The color pair shifts every 3 seconds. The wave
+chases across the clock digits at 3 characters per second (faster in higher
+modes). All of this happens through time-driven math on the Unix timestamp, so
 two renders 1 second apart are visibly different even without client-side
 state.
 
@@ -193,16 +192,15 @@ The `examples/` directory contains:
 
 ## The six modes
 
-| Mode | When                              | Display                                          |
-|------|-----------------------------------|--------------------------------------------------|
-| 0    | >30 min before bedtime            | Dim moon glyph, current time                     |
-| 0    | 10-30 min before                  | Cyan glyph — gentle notice                       |
-| 0    | 0-10 min before                   | Yellow glyph — window closing                    |
-| 1    | 0-60 min past bedtime             | Blinking red clock + elapsed time (+Xm)          |
-| 2    | +1h to +2h past bedtime           | Rainbow clock, shame messages, slow blink        |
-| 3    | +2h to +3h past bedtime           | Underline added, messages escalate, rapid blink  |
-| 4    | +3h to +4h past bedtime           | Reverse pulse, strobe, maximum urgency           |
-| 5    | +4h past bedtime, or past dawn    | Full doom. The glyph rotates. Text unhinged.     |
+| Mode  | When                           | Display                                                   |
+|-------|--------------------------------|-----------------------------------------------------------|
+| plain | >30 min before bedtime         | Dim moon glyph (☾) + current time                         |
+| 0     | 0-30 min before bedtime        | Cyan sparkle (✦), breathing pulse — gentle notice         |
+| 1     | 0-60 min past bedtime          | Rainbow clock + elapsed (+Xm), shame message, slow blink  |
+| 2     | +1h to +2h past bedtime        | Adds underline to the shame text                          |
+| 3     | +2h to +3h past bedtime        | Adds a matrix-drip prefix, rapid blink                    |
+| 4     | +3h to +4h past bedtime        | Adds reverse pulse on odd seconds, strobe                 |
+| 5     | +4h past bedtime, or past dawn | Char-decay clock, three-glyph swarm, doom glyph set       |
 
 Morning motivation (07:00-15:59): when neither shame mode nor blinking is
 active, a calm motivation message replaces the shame output. This is the carrot.

@@ -36,7 +36,6 @@ make lint                 # shellcheck bin/cc-insomnii
 
 ```
 bin/cc-insomnii           # Main script — reads stdin JSON (CC statusline payload), outputs one line
-lib/                      # Sub-libraries loaded by bin/cc-insomnii
 config/                   # Default config (bedtime, shame messages)
 man/                      # Man page
 examples/                 # Example configs

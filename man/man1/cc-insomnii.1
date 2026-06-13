@@ -141,33 +141,31 @@ See
 in the cc-insomnii installation directory for a fully commented reference.
 .SH MODES
 .B cc-insomnii
-escalates through six modes based on the current time relative to bedtime:
-.TP
-.B Mode 0 \- Warning
-More than 10 minutes before bedtime. Clock glyph turns cyan as a gentle
-advance notice. No shame, no blinking.
+shows a plain moon glyph until 30 minutes before bedtime, then escalates through
+six modes (0\-5) as bedtime approaches and passes:
 .TP
 .B Mode 0 \- Approaching
-0\-30 minutes before bedtime. Clock turns yellow. The window is closing.
+0\-30 minutes before bedtime. A cyan sparkle glyph with an optional breathing
+pulse. No shame, no blinking.
 .TP
 .B Mode 1 \- Bedtime
-Bedtime has passed; less than 1 hour overdue. Clock blinks red with elapsed
-time (+Xm). Slow blink. No rainbow yet.
+Bedtime has passed; less than 1 hour overdue. Rainbow character-chase clock with
+elapsed time (+Xm), a rotating shame message, and a slow blink.
 .TP
 .B Mode 2 \- +1h
-1\-2 hours past bedtime. Rainbow character-chase animation activates on the
-clock digits. Shame messages appear. Slow blink.
+1\-2 hours past bedtime. Adds an underline to the shame text. Slow blink.
 .TP
 .B Mode 3 \- +2h
-2\-3 hours past bedtime. Underline added. Shame messages escalate. Rapid blink.
+2\-3 hours past bedtime. Adds a matrix-drip prefix and a rapid blink.
 .TP
 .B Mode 4 \- +3h
-3\-4 hours past bedtime. REVERSE pulse on odd seconds. Full rapid-blink chaos.
+3\-4 hours past bedtime. Adds a reverse pulse on odd seconds and a strobe.
 Messages are at maximum urgency.
 .TP
 .B Mode 5 \- Post-dawn
 More than 4 hours past bedtime, or current time is past the dawn threshold
-(default 04:00). Full doom mode. You are no longer making good decisions.
+(default 04:00). Char-decay clock, a three-glyph swarm, and the doom glyph set.
+You are no longer making good decisions.
 .SH FILES
 .TP
 .I ${CC_INSOMNII_HOME}/config/shame-messages.json
@@ -185,8 +183,7 @@ Default symlink location for the binary (or
 .I ~/.local/bin/cc-insomnii
 for non-root installs).
 .SH SEE ALSO
-.BR claudii (1),
-.BR cc-insomnii (1)
+.BR claudii (1)
 .SH AUTHORS
 bmmmm. Extracted from the claudii project (https://github.com/bmmmm/claudii).
 Rebranded from insomnii to cc-insomnii (https://github.com/bmmmm/cc-insomnii).
