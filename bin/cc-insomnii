@@ -54,17 +54,25 @@ _messages_file="${CC_INSOMNII_HOME}/config/shame-messages.json"
 # --- Layer 2: user config.json ---
 _user_cfg="${XDG_CONFIG_HOME:-$HOME/.config}/cc-insomnii/config.json"
 if [[ -f "$_user_cfg" ]]; then
+  # Read nested keys (.shame.enabled, not the literal flat key "shame.enabled").
+  # Map null→"" explicitly instead of `// ""`: jq's `//` treats a literal `false`
+  # as empty, so `// ""` would make a `false` toggle unreadable. `try … catch null`
+  # guards a non-object value (e.g. "shame": true) without dropping a field and
+  # shifting the field-split below.
   _v=$(jq -r '
     [
-      (.bedtime          // ""),
-      (.dawn             // ""),
-      (."shame.enabled"  // ""),
-      (."motivation.enabled" // ""),
-      (."rainbow.enabled"    // ""),
-      (."breathing.enabled"  // "")
-    ] | join("\t")
+      (.bedtime // ""),
+      (.dawn    // ""),
+      (try .shame.enabled      catch null),
+      (try .motivation.enabled catch null),
+      (try .rainbow.enabled    catch null),
+      (try .breathing.enabled  catch null)
+    ] | map(if . == null then "" else tostring end) | join([31] | implode)
   ' "$_user_cfg" 2>/dev/null) || _v=""
-  IFS=$'\t' read -r _u1 _u2 _u3 _u4 _u5 _u6 <<< "$_v"
+  # Split on US (0x1f), NOT tab: tab is IFS-whitespace, so bash collapses runs of
+  # it and trims leading ones — an empty bedtime/dawn would shift later fields and
+  # land a toggle value in the wrong variable. US never appears in the values.
+  IFS=$'\x1f' read -r _u1 _u2 _u3 _u4 _u5 _u6 <<< "$_v"
   [[ -n "$_u1" ]] && _cfg_bedtime="$_u1"
   [[ -n "$_u2" ]] && _cfg_dawn="$_u2"
   [[ -n "$_u3" ]] && _cfg_shame="$_u3"
