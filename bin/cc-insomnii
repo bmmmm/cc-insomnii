@@ -333,7 +333,7 @@ case "$_render_mode" in
   mode0)
     # 4-second sparkle cycle: dim → normal → dim using sine brightness
     _sp_phase=$(( (_ts % 4) * 8 ))  # maps 0-3s into 0,8,16,24 sine steps
-    if [[ "$_cfg_breathing" == "true" || "$_cfg_breathing" == "1" ]]; then
+    if [[ "$_cfg_breathing" != "false" ]]; then
       _sp_brightness="${_SINE[$_sp_phase]}"
       if (( _sp_brightness < 40 )); then
         _sp_clr="${DIM}${CYAN}"
@@ -417,7 +417,7 @@ case "$_render_mode" in
 
     # Shame text block — breathing modulates color at mode 1+ if enabled
     _shame_fg="${_vibe_rpal[$(( (_rbase + 4) % ${#_vibe_rpal[@]} ))]}"
-    if [[ "$_cfg_breathing" == "true" ]] && (( _vm >= 1 )); then
+    if [[ "$_cfg_breathing" != "false" ]] && (( _vm >= 1 )); then
       # Breathing shifts the shame fg between rpal entries
       _breath_offset=$(( ${_SINE[$_breath_phase]} * ${#_vibe_rpal[@]} / 100 ))
       _shame_fg="${_vibe_rpal[$(( (_rbase + 4 + _breath_offset) % ${#_vibe_rpal[@]} ))]}"

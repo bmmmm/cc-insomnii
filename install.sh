@@ -15,7 +15,8 @@ for arg in "$@"; do
       echo "Usage: bash install.sh [--prefix=DIR] [--uninstall]"
       echo ""
       echo "Options:"
-      echo "  --prefix=DIR    Install to DIR (default: /usr/local/share/cc-insomnii)"
+      echo "  --prefix=DIR    Install to DIR (default: /usr/local/share/cc-insomnii"
+      echo "                  if writable, else ~/.local/share/cc-insomnii)"
       echo "  --uninstall     Remove installed files"
       exit 0
       ;;

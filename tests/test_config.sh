@@ -36,8 +36,10 @@ BT=$(printf '%02d:%02d' "$(( bt_min / 60 ))" "$(( bt_min % 60 ))")
 PAYLOAD='{"model":{"display_name":"Sonnet"}}'
 _strip() { LC_ALL=C sed $'s/\x1b\\[[0-9;]*m//g'; }
 _run() {
-  printf '%s' "$PAYLOAD" | env -u CC_INSOMNII_SHAME CC_INSOMNII_BEDTIME="$BT" \
-    XDG_CONFIG_HOME="$CFG_HOME" "$BIN" 2>&1
+  printf '%s' "$PAYLOAD" | env \
+    -u CC_INSOMNII_SHAME -u CC_INSOMNII_MESSAGES -u CC_INSOMNII_HOME \
+    -u CC_INSOMNII_CONFIG -u CC_INSOMNII_DAWN \
+    CC_INSOMNII_BEDTIME="$BT" XDG_CONFIG_HOME="$CFG_HOME" "$BIN" 2>&1
 }
 
 # Shame enabled (nested) → must actually render a shame mode (elapsed suffix "+").
