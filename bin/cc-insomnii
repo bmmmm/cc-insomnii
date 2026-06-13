@@ -289,9 +289,11 @@ _pick_message() {
         ."shame" // {} | ."0" // [] | if length > 0 then .[($ts / 30 | floor) % length] else empty end
       ' "$_messages_file" 2>/dev/null) ;;
     *)
-      # Accumulate all messages up to and including this mode
+      # Accumulate messages from mode 1 up to and including this mode. Key "0" is
+      # the pre-bedtime approach pool ("30 min until bedtime") — excluded here so
+      # it can't surface once bedtime has already passed.
       _result=$(jq -r --argjson mode "$_mode_num" --argjson ts "$_ts" '
-        .shame | [to_entries[] | select((.key | tonumber) <= $mode) | .value[]]
+        .shame | [to_entries[] | select((.key | tonumber) > 0 and (.key | tonumber) <= $mode) | .value[]]
         as $pool | if ($pool | length) > 0 then $pool[($ts / 30 | floor) % ($pool | length)] else empty end
       ' "$_messages_file" 2>/dev/null) ;;
   esac
