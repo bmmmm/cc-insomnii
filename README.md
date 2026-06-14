@@ -58,13 +58,13 @@ cd cc-insomnii
 bash install.sh
 ```
 
-Non-root (installs to `~/.local/share/cc-insomnii`, symlinks to `~/.local/bin/`):
+With no flags, `install.sh` installs to `/usr/local/share/cc-insomnii` and
+symlinks `/usr/local/bin/cc-insomnii` when `/usr/local/share` is writable,
+otherwise it falls back to `~/.local/share/cc-insomnii` and symlinks
+`~/.local/bin/cc-insomnii` — a non-root install needs no flags.
 
-```bash
-bash install.sh --prefix=~/.local/share/cc-insomnii
-```
-
-Custom prefix:
+A `--prefix` install is self-contained: the binary stays at `DIR/bin/cc-insomnii`
+with no separate symlink, so add that directory to your `PATH`:
 
 ```bash
 bash install.sh --prefix=/opt/cc-insomnii
