@@ -6,7 +6,7 @@
 set -euo pipefail
 
 # Version — keep in sync with man/man1/cc-insomnii.1 (.TH) and CHANGELOG.md.
-_VERSION="0.1.0"
+_VERSION="0.2.0"
 
 # --- Guard: jq required ---
 if ! command -v jq >/dev/null 2>&1; then
@@ -123,6 +123,11 @@ CONFIG
   File: $XDG_CONFIG_HOME/cc-insomnii/config.json (or ~/.config/cc-insomnii/config.json)
   Catalog override: $XDG_CONFIG_HOME/cc-insomnii/messages.json
 
+PREVIEW
+  CC_INSOMNII_NOW=HH:MM renders as if the clock read that time — preview any
+  mode without waiting for it, e.g.:
+      echo '{}' | CC_INSOMNII_NOW=02:00 CC_INSOMNII_BEDTIME=23:00 cc-insomnii
+
 See cc-insomnii(1) for the full documentation.
 HELP
       exit 0
@@ -142,9 +147,31 @@ done
 _json=$(cat)
 
 # --- Time math — one date call keeps every field on the same second ---
-IFS='|' read -r _ts _hhmm _now_h _now_m <<< "$(date '+%s|%H:%M|%H|%M')"
-_now_h="${_now_h#0}"; _now_m="${_now_m#0}"
-_now_min=$(( ${_now_h:-0} * 60 + ${_now_m:-0} ))
+# CC_INSOMNII_NOW previews (or tests) any wall-clock time without waiting for it:
+# set it to HH:MM and the whole render — mode selection, the dawn/motivation
+# windows, the midnight-wrap delta — behaves as if the clock read that time. The
+# epoch used for animation and message rotation is derived deterministically from
+# HH:MM, so a given preview is reproducible. Unset (the normal path) reads the
+# real clock with a single date call that keeps every field on the same second.
+if [[ -n "${CC_INSOMNII_NOW:-}" ]]; then
+  if [[ "$CC_INSOMNII_NOW" =~ ^([0-9]{1,2}):([0-9]{2})$ ]]; then
+    _now_h=$(( 10#${BASH_REMATCH[1]} )); _now_m=$(( 10#${BASH_REMATCH[2]} ))
+    if (( _now_h > 23 || _now_m > 59 )); then
+      printf 'cc-insomnii: invalid CC_INSOMNII_NOW %s (want HH:MM, 00:00-23:59)\n' "$CC_INSOMNII_NOW" >&2
+      exit 2
+    fi
+    _now_min=$(( _now_h * 60 + _now_m ))
+    _hhmm=$(printf '%02d:%02d' "$_now_h" "$_now_m")
+    _ts=$(( _now_min * 60 ))  # synthetic but stable epoch → reproducible preview
+  else
+    printf 'cc-insomnii: invalid CC_INSOMNII_NOW %s (want HH:MM, 00:00-23:59)\n' "$CC_INSOMNII_NOW" >&2
+    exit 2
+  fi
+else
+  IFS='|' read -r _ts _hhmm _now_h _now_m <<< "$(date '+%s|%H:%M|%H|%M')"
+  _now_h="${_now_h#0}"; _now_m="${_now_m#0}"
+  _now_min=$(( ${_now_h:-0} * 60 + ${_now_m:-0} ))
+fi
 
 # Parse bedtime and dawn into minutes-since-midnight
 _parse_hhmm() {

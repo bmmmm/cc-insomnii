@@ -172,6 +172,14 @@ over `config.json`.
 | `CC_INSOMNII_BREATHING`  | `true`    | Enable breathing pulse on glyph                  |
 | `CC_INSOMNII_CONFIG`     | (auto)    | Override config file path                        |
 | `CC_INSOMNII_MESSAGES`   | (auto)    | Override shame messages file path                |
+| `CC_INSOMNII_NOW`        | (clock)   | Preview any mode as if it were this `HH:MM` time |
+
+> **Preview a mode without waiting for it:** `CC_INSOMNII_NOW=HH:MM` renders as
+> if the clock read that time, so you can see what 2 a.m. looks like at noon:
+>
+> ```bash
+> echo '{}' | CC_INSOMNII_NOW=02:00 CC_INSOMNII_BEDTIME=23:00 cc-insomnii
+> ```
 
 ### Custom shame messages
 

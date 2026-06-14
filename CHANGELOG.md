@@ -7,9 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-06-14
+
 ### Added
 - `--version`/`-V` flag prints the version and exits.
 - `CC_INSOMNII_CONFIG` environment variable overrides the user config file path (symmetric with `CC_INSOMNII_MESSAGES`).
+- `CC_INSOMNII_NOW=HH:MM` renders as if the wall clock read that time, so any mode — the approach sparkle, a shame escalation, the dawn or motivation window — can be previewed (and tested) without waiting for that time of day. The animation/message epoch is derived deterministically from the value, so a preview is reproducible; invalid values exit non-zero.
+- `tests/test_modes.sh`: a deterministic mode-matrix regression that pins every render branch via `CC_INSOMNII_NOW`, including the dawn override, the motivation/dawn windows, and the midnight-wrap delta — none of which the existing tests reached. `make bench` (`tests/bench.sh`) measures render time at 16–30 ms/render, ~10× under Claude Code's ~300 ms statusline throttle, so no message-catalog caching is warranted.
 
 ### Fixed
 - config.json toggles (`shame`/`motivation`/`rainbow`/`breathing` `.enabled`) were silently ignored: the parser read flat dotted keys (`."shame.enabled"`) instead of the documented nested form, and jq's `//` collapsed a literal `false` to empty. Now reads nested keys, preserves `false`, and splits on US (0x1f) so an empty bedtime/dawn can't shift a toggle into the wrong field.

@@ -1,4 +1,4 @@
-.TH CC-INSOMNII 1 "2026-05-10" "cc-insomnii 0.1.0" "User Commands"
+.TH CC-INSOMNII 1 "2026-06-14" "cc-insomnii 0.2.0" "User Commands"
 .SH NAME
 cc-insomnii \- bedtime shaming statusline for Claude Code
 .SH SYNOPSIS
@@ -117,6 +117,18 @@ Override path to the user config file. Default:
 .B CC_INSOMNII_MESSAGES
 Override path to the shame messages file. When set, replaces the shipped
 .IR config/shame-messages.json .
+.TP
+.B CC_INSOMNII_NOW
+Render as if the wall clock read this
+.I HH:MM
+time instead of the real one. Lets you preview any mode \(em the approach
+sparkle, a shame escalation, the dawn or motivation window \(em without waiting
+for that time of day. The epoch used for animation and message rotation is
+derived deterministically from the value, so a given preview is reproducible.
+Invalid values (not
+.IR HH:MM ,
+or outside 00:00\-23:59) exit non-zero. Intended for previewing and testing;
+unset in normal use.
 .SH CONFIGURATION
 User configuration is read from
 .IR ${XDG_CONFIG_HOME:-$HOME/.config}/cc-insomnii/config.json .
