@@ -49,3 +49,9 @@ install.sh                # Installer
 - Reads Claude Code statusline JSON from stdin, writes one styled line to stdout.
 - Shame messages and bedtime are configurable; the feature itself is not optional.
 - Compatible with macOS `/bin/bash` 3.2 — no `declare -A`, no `(( var++ ))` on counters.
+- **`bin/cc-insomnii` is the source of truth; docs mirror it.** Any change to env-var
+  names, defaults, mode boundaries, timings, or glyph pools must be synced across all
+  four doc surfaces: README (env + mode tables, demo, install steps), `man/man1/cc-insomnii.1`
+  (ENVIRONMENT / MODES / FILES), the in-script `--help` heredoc, and `examples/`. Version
+  lives in three places — `_VERSION`, the man `.TH`, and `CHANGELOG.md`. Lint the man page
+  with `mandoc -T lint` (groff is absent on macOS).
