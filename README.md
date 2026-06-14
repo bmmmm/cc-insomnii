@@ -210,6 +210,10 @@ The `examples/` directory contains:
 | 4     | +3h to +4h past bedtime        | Adds reverse pulse on odd seconds, strobe                 |
 | 5     | +4h past bedtime, or past dawn | Char-decay clock, three-glyph swarm, doom glyph set       |
 
+Dawn greeting (🌅, dawn threshold to 07:00): when no shame mode is active in
+that window — typically with shame disabled — a dim sunrise glyph and a quiet
+dawn message appear instead of the post-dawn chaos.
+
 Morning motivation (07:00-15:59): when neither shame mode nor blinking is
 active, a calm motivation message replaces the shame output. This is the carrot.
 The rest is the stick.
