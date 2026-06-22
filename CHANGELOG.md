@@ -7,6 +7,52 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-06-23
+
+A display-overhaul release in three layers — terminal robustness, real session
+data, and theming. Every new feature is opt-in and OFF by default; the default
+colored render is byte-identical to 0.3.0, verified across 1440 minutes × 7
+bedtimes (output hash unchanged). All new toggles honour the falsy spellings
+(`false`/`0`/`no`/`off`/`disabled`).
+
+### Added
+- No-color and accessible output. cc-insomnii now honours the `NO_COLOR`
+  convention (any non-empty value), `TERM=dumb`, and `CC_INSOMNII_COLOR=never`
+  by dropping every ANSI escape: the rainbow chase falls back to plain text and
+  the mode-5 char-decay is skipped so the clock stays legible.
+  `CC_INSOMNII_COLOR=always` forces color even under `NO_COLOR`.
+  `CC_INSOMNII_ACCESSIBLE` adds a screen-reader mode — no color, ASCII glyphs,
+  and no blink/reverse/strobe/char-decay/glyph-swarm/matrix-drip, leaving a
+  stable `time +elapsed message` line in every mode. `CC_INSOMNII_ASCII` swaps
+  just the emoji glyph pools for 7-bit ASCII while keeping color.
+- Session data from the statusline payload (previously read only for `--after`).
+  A single batched jq pass — run only when a session feature is enabled —
+  surfaces four opt-in fields: `CC_INSOMNII_MODEL` shows `model.display_name` as
+  a calm-mode badge (printed verbatim, so Opus/Sonnet/Haiku/Fable and any future
+  model work with no code change); `CC_INSOMNII_CONTEXT` paints a red `[!]`
+  before the clock when `context_window.used_percentage` ≥ 80 (falling back to
+  `exceeds_200k_tokens`); `CC_INSOMNII_DURATION` appends the session length
+  (`Hh Mm`) to the clock; `CC_INSOMNII_COST` appends the dollar spend in shame
+  modes and, past `CC_INSOMNII_COST_BUMP` dollars, bumps the shame message one
+  tier.
+- Named color themes via `CC_INSOMNII_THEME`: `vibe` (default rainbow), `mono`,
+  `amber`, `matrix`, `ocean`. `CC_INSOMNII_PALETTE=escalating` gives each shame
+  mode its own color region (legible from color alone); `classic` keeps the
+  shared cycle. `CC_INSOMNII_QUIET=HH:MM-HH:MM` caps an active shame mode at
+  mode 1 inside the window — the message and elapsed counter stay, but the
+  strobe, char-decay and glyph swarm do not — for users who must stay up.
+- Catalog-message sanitization: control bytes and ESC are stripped and TAB/CR/LF
+  folded to spaces (byte-wise, so multibyte UTF-8 survives), so a malformed
+  `messages.json` can neither break the one-line contract nor inject its own SGR.
+
+### Changed
+- All new knobs are environment-only (terminal capability, session runtime and
+  theming live in the environment, not the project `config.json`); the original
+  feature toggles remain config-file-settable. Documentation synced across the
+  README env/mode tables and notes, `man/man1/cc-insomnii.1` (ENVIRONMENT), and
+  the in-script `--help` heredoc. New regression suites: `tests/test_robustness.sh`,
+  `tests/test_session.sh`, `tests/test_theme.sh`.
+
 ## [0.3.0] - 2026-06-22
 
 ### Added
@@ -77,7 +123,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `install.sh` with `--prefix` and `--uninstall` flags
 - Test harness in `tests/run.sh` with `--summary` flag
 
-[Unreleased]: https://github.com/bmmmm/cc-insomnii/compare/v0.3.0...HEAD
+[Unreleased]: https://github.com/bmmmm/cc-insomnii/compare/v0.4.0...HEAD
+[0.4.0]: https://github.com/bmmmm/cc-insomnii/compare/v0.3.0...v0.4.0
 [0.3.0]: https://github.com/bmmmm/cc-insomnii/compare/v0.2.1...v0.3.0
 [0.2.1]: https://github.com/bmmmm/cc-insomnii/compare/v0.2.0...v0.2.1
 [0.2.0]: https://github.com/bmmmm/cc-insomnii/compare/v0.1.0...v0.2.0

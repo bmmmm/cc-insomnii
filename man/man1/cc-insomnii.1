@@ -1,4 +1,4 @@
-.TH CC-INSOMNII 1 "2026-06-22" "cc-insomnii 0.3.0" "User Commands"
+.TH CC-INSOMNII 1 "2026-06-23" "cc-insomnii 0.4.0" "User Commands"
 .SH NAME
 cc-insomnii \- bedtime shaming statusline for Claude Code
 .SH SYNOPSIS
@@ -179,7 +179,8 @@ code change. Default:
 .B CC_INSOMNII_CONTEXT
 Paint a red
 .B [!]
-marker before the clock when the session is deep into its context window:
+marker before the clock, in the shame modes, when the session is deep into its
+context window:
 .I context_window.used_percentage
 at 80 or above, or the legacy
 .I exceeds_200k_tokens
@@ -191,7 +192,7 @@ Append the session duration
 .RI ( cost.total_duration_ms ,
 formatted
 .IR Hh Mm )
-to the clock. Default:
+to the clock in the shame modes. Default:
 .BR false .
 .TP
 .B CC_INSOMNII_COST

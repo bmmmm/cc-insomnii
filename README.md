@@ -180,8 +180,8 @@ over `config.json`.
 | `CC_INSOMNII_ASCII`      | `false`   | Swap the emoji glyph pools for 7-bit ASCII (for emoji-incapable terminals) |
 | `CC_INSOMNII_ACCESSIBLE` | `false`   | Screen-reader-friendly line: no color, ASCII glyphs, no blink/decay/swarm/drip |
 | `CC_INSOMNII_MODEL`      | `false`   | Show the model (`model.display_name`) as a badge in the calm modes (plain/motivation/dawn) |
-| `CC_INSOMNII_CONTEXT`    | `false`   | Red `[!]` clock marker when the context window is ≥ 80% full (or `exceeds_200k_tokens`) |
-| `CC_INSOMNII_DURATION`   | `false`   | Append the session duration (`cost.total_duration_ms`) to the clock, e.g. `3h12m` |
+| `CC_INSOMNII_CONTEXT`    | `false`   | Red `[!]` clock marker in shame modes when the context window is ≥ 80% full (or `exceeds_200k_tokens`) |
+| `CC_INSOMNII_DURATION`   | `false`   | Append the session duration (`cost.total_duration_ms`) to the clock in shame modes, e.g. `3h12m` |
 | `CC_INSOMNII_COST`       | `false`   | Append the session cost (`$X.XX`) in shame modes; a costly session also bumps the message tier |
 | `CC_INSOMNII_COST_BUMP`  | `5`       | Whole-dollar threshold at/above which `CC_INSOMNII_COST` bumps the shame message tier |
 | `CC_INSOMNII_THEME`      | `vibe`    | Color theme: `vibe` (default), `mono`, `amber`, `matrix`, `ocean` |
@@ -229,7 +229,10 @@ window is ≥ 80% full (using `context_window.used_percentage`, falling back to
 the legacy `exceeds_200k_tokens`). `CC_INSOMNII_COST` appends the dollar spend
 in shame modes (`GO TO BED  $4.20`) and, past `CC_INSOMNII_COST_BUMP` dollars,
 escalates the shame one message tier — so an expensive 1 a.m. session reads as
-harshly as a free 4 a.m. one. These too are environment-only.
+harshly as a free 4 a.m. one. The duration tag, context redline and cost appear
+in the shame modes (1–5), where the "look what you've done" evidence belongs;
+the model badge is the one calm-mode (plain/motivation/dawn) fact. These too are
+environment-only.
 
 **Theming.** `CC_INSOMNII_THEME` swaps the whole palette — `vibe` (the default
 rainbow), `mono` (grayscale), `amber`, `matrix` (green), or `ocean` (blue).

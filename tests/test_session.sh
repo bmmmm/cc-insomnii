@@ -66,9 +66,25 @@ out=$(printf '{"model":{"display_name":"Nimbus"}}' | env \
   CC_INSOMNII_MODEL=1 "$BIN" 2>&1 | _strip)
 _contains "model unknown family" "Nimbus" "$out"
 
+# A 0x1f (US) byte in display_name is stripped in jq, not split into the badge.
+us_dn=$(printf 'Mod\037el')
+us_payload=$(jq -nc --arg m "$us_dn" '{model:{display_name:$m}}')
+us_out=$(printf '%s' "$us_payload" | env \
+  -u CC_INSOMNII_HOME -u CC_INSOMNII_CONFIG -u CC_INSOMNII_MESSAGES \
+  XDG_CONFIG_HOME="$EMPTY" CC_INSOMNII_NOW=22:00 CC_INSOMNII_BEDTIME=23:00 \
+  CC_INSOMNII_MODEL=1 "$BIN" 2>&1 | _strip)
+_contains "US-byte split-safe" "Model" "$us_out"
+
 # --- duration tag (3h12m) appended to the clock ---
 _contains "duration tag" "3h12m" "$(_render 23:30 CC_INSOMNII_DURATION=1)"
 _absent   "duration off" "3h12m" "$(_render 23:30)"
+
+# A fractional total_duration_ms is floored in jq (not dropped by the int guard).
+df_out=$(printf '{"cost":{"total_duration_ms":11520000.7}}' | env \
+  -u CC_INSOMNII_HOME -u CC_INSOMNII_CONFIG -u CC_INSOMNII_MESSAGES \
+  XDG_CONFIG_HOME="$EMPTY" CC_INSOMNII_NOW=23:30 CC_INSOMNII_BEDTIME=23:00 \
+  CC_INSOMNII_DURATION=1 "$BIN" 2>&1 | _strip)
+_contains "duration float floored" "3h12m" "$df_out"
 
 # --- context redline marker ---
 _contains "context redline" "[!]" "$(_render 23:30 CC_INSOMNII_CONTEXT=1)"

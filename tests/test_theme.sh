@@ -86,6 +86,16 @@ set -e
 _contains "invalid quiet warns" "invalid CC_INSOMNII_QUIET" "$err"
 _contains "invalid quiet still renders" ":" "$out"
 
+# A well-shaped but out-of-range window (99:99-25:88) is also rejected, not
+# silently treated as a window — the range check matches bedtime/dawn rigor.
+set +e
+oor=$(printf '%s' "$PAYLOAD" | env \
+  -u CC_INSOMNII_HOME -u CC_INSOMNII_CONFIG -u CC_INSOMNII_MESSAGES \
+  XDG_CONFIG_HOME="$EMPTY" TERM=xterm-256color \
+  CC_INSOMNII_NOW=03:30 CC_INSOMNII_BEDTIME=23:00 CC_INSOMNII_QUIET=99:99-25:88 "$BIN" 2>&1 >/dev/null)
+set -e
+_contains "out-of-range quiet warns" "invalid CC_INSOMNII_QUIET" "$oor"
+
 if (( fails > 0 )); then
   printf '\n%d theme assertion(s) failed\n' "$fails"
   exit 1
