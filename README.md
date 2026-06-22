@@ -164,7 +164,7 @@ over `config.json`.
 | Variable                 | Default   | Description                                      |
 |--------------------------|-----------|--------------------------------------------------|
 | `CC_INSOMNII_HOME`       | auto      | Path to cc-insomnii install dir                  |
-| `CC_INSOMNII_BEDTIME`    | `23:00`   | Bedtime in HH:MM (24h); evening/night recommended |
+| `CC_INSOMNII_BEDTIME`    | `23:00`   | Bedtime in HH:MM (24h); `18:00`–`05:59` supported |
 | `CC_INSOMNII_DAWN`       | `04:00`   | Dawn threshold — forces mode 5 when up past it    |
 | `CC_INSOMNII_SHAME`      | `true`    | Enable shame messages                            |
 | `CC_INSOMNII_MOTIVATION` | `true`    | Enable morning motivation (07:00-15:59)          |
@@ -216,13 +216,15 @@ The `examples/` directory contains:
 | 4     | +3h to +4h past bedtime        | Adds reverse pulse on odd seconds, strobe                 |
 | 5     | +4h past bedtime, or past dawn while still up | Char-decay clock, three-glyph swarm, doom glyph set |
 
-Overnight shame assumes an **evening/night bedtime** (`>= 18:00`). The elapsed
-counter wraps across midnight and runs until the ~06:00 morning cutoff, after
+The elapsed counter is the shortest signed distance to your bedtime on the
+24-hour clock, so it is correct for an **evening, night, or after-midnight
+bedtime** (`18:00`–`05:59`, e.g. `23:00`, `01:00`): it counts up from bedtime,
+wraps across midnight, and the night runs until the ~06:00 morning cutoff, after
 which the dawn and motivation windows take over. While a shame mode is active,
 being up past the dawn threshold (between dawn and 06:00) forces mode 5. A
-bedtime set **at or after midnight, or before 18:00** (e.g. `00:30`, `02:00`,
-`14:00`) is a known limitation — the overnight wrap does not apply there, so the
-elapsed escalation is inaccurate; use an evening bedtime.
+**daytime bedtime** (`06:00`–`17:59`, e.g. `09:00`, `14:00`) is outside this
+range — the night still ends at the fixed 06:00 cutoff, so the escalation there
+is inaccurate; use an evening or night bedtime.
 
 Dawn greeting (🌅, dawn threshold to 07:00): when no shame mode is active in
 that window — typically with shame disabled — a dim sunrise glyph and a quiet

@@ -1,11 +1,13 @@
 #!/usr/bin/env bash
-# tests/test_wrap.sh — midnight-wrap (evening-only) + config resilience.
+# tests/test_wrap.sh — midnight-wrap delta + morning cutoff + config resilience.
 #
-# Pins the INTENTIONAL wrap rule: overnight shame assumes an evening/night
-# bedtime (>= 18:00). The elapsed counter wraps across midnight only for such a
-# bedtime; an afternoon/early-evening bedtime stays plain overnight by design
-# (documented as a known limitation). The default evening bedtime keeps its exact
-# wrapped delta.
+# Pins the centered-circle delta model: the elapsed counter is the shortest
+# signed distance to bedtime, so an evening/night bedtime keeps its exact wrapped
+# delta and the shame window closes at the 06:00 morning cutoff (handing off to
+# dawn). A daytime bedtime is outside the supported evening/night range and is
+# only exercised here to show it does not escalate in the deep night. The
+# post-midnight bedtime behaviour (approach, escalation, cutoff) is pinned
+# separately in tests/test_postmidnight.sh.
 #
 # Also pins phase-1 config robustness from the script's perspective: malformed
 # JSON degrades to the no-config baseline, a scalar `"shame": false` disables
@@ -79,20 +81,30 @@ _not_contains() { # LABEL NEEDLE HAYSTACK
 evening=$(_render 00:30 23:00 04:00 true) || evening="<render failed: $?>"
 _contains "evening bedtime 23:00 @ 00:30 wraps to +1h30m" "+1h30m" "$evening"
 
-# --- Afternoon bedtime stays PLAIN overnight (evening-only wrap, by design) ---
-# bedtime 14:00, now 02:00: the wrap only fires for an evening bedtime (>= 18:00),
-# so an afternoon bedtime shows the plain moon — the documented known limitation.
+# --- Daytime bedtime does not escalate in the deep night (out of range) ---
+# bedtime 14:00, now 02:00: a daytime bedtime is outside the supported
+# evening/night range. At 02:00 it is ~12h from bedtime (the antipode), so the
+# render is neither approach nor shame — the plain moon, no elapsed suffix.
 afternoon=$(_render 02:00 14:00 04:00 true) || afternoon="<render failed: $?>"
-_contains "afternoon bedtime 14:00 @ 02:00 stays plain moon" "☾" "$afternoon"
-_not_contains "afternoon bedtime 14:00 @ 02:00 carries no elapsed suffix" "+" "$afternoon"
+_contains "daytime bedtime 14:00 @ 02:00 stays plain moon" "☾" "$afternoon"
+_not_contains "daytime bedtime 14:00 @ 02:00 carries no elapsed suffix" "+" "$afternoon"
 
-# --- Evening-threshold boundary: 18:00 wraps, 17:59 does not ---
-# The wrap requires bedtime >= 18:00 (1080 min). 18:00 @ 01:00 wraps into shame;
-# 17:59 @ 01:00 falls below the threshold and stays plain.
+# --- Lowest evening bedtime still wraps into shame ---
+# 18:00 @ 01:00 is 7h past bedtime → a shame mode with an elapsed suffix.
 bt1800=$(_render 01:00 18:00 04:00 true) || bt1800="<render failed: $?>"
-bt1759=$(_render 01:00 17:59 04:00 true) || bt1759="<render failed: $?>"
 _contains "bedtime 18:00 @ 01:00 wraps to shame (+ suffix)" "+" "$bt1800"
-_contains "bedtime 17:59 @ 01:00 stays plain moon" "☾" "$bt1759"
+
+# --- Morning cutoff: the night window closes at 06:00 (evening, byte-identical) ---
+# 23:00 bedtime at 05:59 is still mode 5 (in-window) — asserted via the
+# mode-5-exclusive decay block █ rather than the "+" suffix, since at mode 5 the
+# decay can replace the "+" itself. At 06:00 the window has closed and the render
+# hands off to the dawn greeting (no shame, no elapsed suffix). This is the exact
+# morning boundary the old evening wrap already produced.
+cut_before=$(_render 05:59 23:00 04:00 true) || cut_before="<render failed: $?>"
+cut_after=$(_render 06:00 23:00 04:00 true)  || cut_after="<render failed: $?>"
+_contains "23:00 @ 05:59 still in shame window (mode-5 decay █)" "█" "$cut_before"
+_contains "23:00 @ 06:00 hands off to dawn glyph"               "🌅" "$cut_after"
+_not_contains "23:00 @ 06:00 carries no elapsed suffix"         "+"  "$cut_after"
 
 # --- Resilience: malformed config.json == no-config baseline ---
 # A syntactically broken config must not change the render vs no config at all.

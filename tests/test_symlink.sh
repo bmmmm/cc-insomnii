@@ -39,16 +39,18 @@ EOF
 
 ln -s "$TMPD/install/bin/cc-insomnii" "$TMPD/launch/cc-insomnii"
 
-# Bedtime ~2h ago (midnight-wrap-safe) → a shame mode regardless of wall-clock.
-now_min=$(( 10#$(date +%H) * 60 + 10#$(date +%M) ))
-bt_min=$(( (now_min - 120 + 1440) % 1440 ))
-BT="$(printf '%02d:%02d' "$(( bt_min / 60 ))" "$(( bt_min % 60 ))")"
+# Fixed night time + an evening bedtime 2h earlier → a shame mode (so the catalog
+# sentinel renders), deterministic regardless of when the suite runs. A wall-clock
+# bedtime "2h ago" would fall past the 06:00 night-window cutoff in the morning
+# and render a non-shame day mode, which carries no catalog message.
+NOW="01:00"
+BT="23:00"
 
 PAYLOAD='{"model":{"display_name":"Sonnet"}}'
 output="$(printf '%s' "$PAYLOAD" | env \
   -u CC_INSOMNII_HOME -u CC_INSOMNII_MESSAGES -u CC_INSOMNII_CONFIG \
   -u CC_INSOMNII_SHAME -u CC_INSOMNII_DAWN \
-  CC_INSOMNII_BEDTIME="$BT" XDG_CONFIG_HOME="$TMPD/xdg" \
+  CC_INSOMNII_NOW="$NOW" CC_INSOMNII_BEDTIME="$BT" XDG_CONFIG_HOME="$TMPD/xdg" \
   "$TMPD/launch/cc-insomnii" 2>&1)"
 plain="$(printf '%s' "$output" | LC_ALL=C sed $'s/\x1b\\[[0-9;]*m//g')"
 

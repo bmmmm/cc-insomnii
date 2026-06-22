@@ -78,7 +78,8 @@ Path to the cc-insomnii installation directory. Used to locate
 .B CC_INSOMNII_BEDTIME
 Bedtime in
 .I HH:MM
-24-hour format. An evening or night value is assumed (see
+24-hour format. An evening, night, or after-midnight value (18:00\-05:59) is
+supported (see
 .BR MODES ).
 An invalid value (not
 .IR HH:MM ,
@@ -187,15 +188,18 @@ current time is past the dawn threshold (default 04:00, applied between dawn and
 the 06:00 morning cutoff). Char-decay clock, a three-glyph swarm, and the doom
 glyph set. You are no longer making good decisions.
 .PP
-Overnight shame assumes an evening or night bedtime (>= 18:00): the elapsed
-counter wraps across midnight and runs until the ~06:00 morning cutoff, after
-which the dawn and motivation windows take over. A bedtime set at or after
-midnight, or before 18:00 (e.g.
-.IR 00:30 ,
-.IR 02:00 ,
+The elapsed counter is the shortest signed distance to bedtime on the 24-hour
+clock, so it is correct for an evening, night, or after-midnight bedtime
+(18:00\-05:59, e.g.
+.IR 23:00 ,
+.IR 01:00 ):
+it counts up from bedtime, wraps across midnight, and the night runs until the
+~06:00 morning cutoff, after which the dawn and motivation windows take over. A
+daytime bedtime (06:00\-17:59, e.g.
+.IR 09:00 ,
 .IR 14:00 )
-is a known limitation \(em the overnight wrap does not apply there, so the
-elapsed escalation is inaccurate. Use an evening bedtime.
+is outside this range \(em the night still ends at the fixed 06:00 cutoff, so
+the elapsed escalation there is inaccurate. Use an evening or night bedtime.
 .SH FILES
 .TP
 .I ${CC_INSOMNII_HOME}/config/shame-messages.json

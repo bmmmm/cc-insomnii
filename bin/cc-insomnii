@@ -209,12 +209,17 @@ _parse_hhmm() {
 _bt_min=$(_parse_hhmm "$_cfg_bedtime")
 _dw_min=$(_parse_hhmm "$_cfg_dawn")
 
-# Delta since bedtime — wrap-aware (handles coding past midnight)
+# Delta since bedtime — shortest signed distance on the 24h circle, in
+# [-720, 720). Just before bedtime delta is small-negative (the mode-0
+# approach); once bedtime passes it climbs through the shame modes. Taking the
+# centered remainder (instead of the old "+1440 only if before 6am and bedtime
+# is in the evening" wrap) makes the elapsed counter correct for an after-
+# midnight bedtime too, without changing any evening/night (>= 18:00) render —
+# there the centered value already equals the old wrap result inside the active
+# window, and the night-window gate below suppresses it everywhere else.
 _delta_min=$(( _now_min - _bt_min ))
-if (( _now_min < 360 && _bt_min >= 1080 )); then
-  # Before 6am, bedtime was in the evening — we crossed midnight
-  _delta_min=$(( _delta_min + 1440 ))
-fi
+if   (( _delta_min >=  720 )); then _delta_min=$(( _delta_min - 1440 ))
+elif (( _delta_min <  -720 )); then _delta_min=$(( _delta_min + 1440 )); fi
 
 # --- Sine approximation table for breathing pulse (32 steps, 0-100 scaled) ---
 # Precomputed: round(50 + 50*sin(2*pi*i/32)) for i in 0..31
@@ -269,8 +274,23 @@ _vibe_rpal=(
 
 _render_mode="plain"
 
+# Night window: from 30 min before bedtime until the 06:00 morning cutoff, on
+# the 24h circle. The shame escalation and the mode-0 approach only fire inside
+# it; outside, the night is over (or has not begun) and we fall through to the
+# motivation/dawn/plain day modes. For an evening/night bedtime (>= 18:00) this
+# window is exactly the region the old wrap covered, so those renders are
+# unchanged; it only adds a morning bound so an after-midnight bedtime stops
+# shaming at 06:00 instead of escalating to mode 5 for the rest of the day.
+_morning_cut=360
+_appr_start=$(( (_bt_min - 30 + 1440) % 1440 ))
+if (( _appr_start < _morning_cut )); then
+  if (( _now_min >= _appr_start && _now_min < _morning_cut )); then _in_night_window=1; else _in_night_window=0; fi
+else
+  if (( _now_min >= _appr_start || _now_min < _morning_cut )); then _in_night_window=1; else _in_night_window=0; fi
+fi
+
 # Shame takes priority — check first
-if [[ "$_cfg_shame" != "false" ]] && (( _delta_min >= 0 )); then
+if [[ "$_cfg_shame" != "false" ]] && (( _in_night_window && _delta_min >= 0 )); then
   if   (( _delta_min < 60  )); then _render_mode="mode1"
   elif (( _delta_min < 120 )); then _render_mode="mode2"
   elif (( _delta_min < 180 )); then _render_mode="mode3"
@@ -280,7 +300,7 @@ if [[ "$_cfg_shame" != "false" ]] && (( _delta_min >= 0 )); then
   if (( _dw_min > 0 && _now_min >= _dw_min && _now_min < 360 )); then
     _render_mode="mode5"
   fi
-elif (( _delta_min >= -30 && _delta_min < 0 )); then
+elif (( _in_night_window && _delta_min >= -30 && _delta_min < 0 )); then
   _render_mode="mode0"
 elif [[ "$_cfg_motivation" != "false" ]] && (( _now_min >= 420 && _now_min < 960 )); then
   _render_mode="motivation"
