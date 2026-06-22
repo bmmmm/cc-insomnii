@@ -184,6 +184,9 @@ over `config.json`.
 | `CC_INSOMNII_DURATION`   | `false`   | Append the session duration (`cost.total_duration_ms`) to the clock, e.g. `3h12m` |
 | `CC_INSOMNII_COST`       | `false`   | Append the session cost (`$X.XX`) in shame modes; a costly session also bumps the message tier |
 | `CC_INSOMNII_COST_BUMP`  | `5`       | Whole-dollar threshold at/above which `CC_INSOMNII_COST` bumps the shame message tier |
+| `CC_INSOMNII_THEME`      | `vibe`    | Color theme: `vibe` (default), `mono`, `amber`, `matrix`, `ocean` |
+| `CC_INSOMNII_PALETTE`    | `classic` | `escalating` gives each shame mode its own color region; `classic` is the shared cycle |
+| `CC_INSOMNII_QUIET`      | (none)    | `HH:MM-HH:MM` window where shame is capped at mode 1 (no strobe/decay/swarm) |
 | `CC_INSOMNII_CONFIG`     | (auto)    | Override config file path                        |
 | `CC_INSOMNII_MESSAGES`   | (auto)    | Override shame messages file path                |
 | `CC_INSOMNII_NOW`        | (clock)   | Preview any mode as if it were this `HH:MM` time |
@@ -227,6 +230,16 @@ the legacy `exceeds_200k_tokens`). `CC_INSOMNII_COST` appends the dollar spend
 in shame modes (`GO TO BED  $4.20`) and, past `CC_INSOMNII_COST_BUMP` dollars,
 escalates the shame one message tier — so an expensive 1 a.m. session reads as
 harshly as a free 4 a.m. one. These too are environment-only.
+
+**Theming.** `CC_INSOMNII_THEME` swaps the whole palette — `vibe` (the default
+rainbow), `mono` (grayscale), `amber`, `matrix` (green), or `ocean` (blue).
+`CC_INSOMNII_PALETTE=escalating` makes each shame mode anchor a different region
+of the active palette, so the mode is legible from color alone; `classic` (the
+default) keeps the single shared cycle. `CC_INSOMNII_QUIET=HH:MM-HH:MM` is for
+people who have to stay up: inside the window an active shame mode is capped at
+mode 1 — the message and elapsed counter stay, but the strobe, char-decay and
+glyph swarm do not. A malformed window warns on stderr and is ignored. All three
+are environment-only and leave the default render byte-identical.
 
 An invalid `CC_INSOMNII_BEDTIME` or `CC_INSOMNII_DAWN` (not `HH:MM`, or outside
 `00:00`–`23:59`) is rejected: cc-insomnii prints a warning to stderr and falls

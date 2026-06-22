@@ -63,6 +63,13 @@ _cfg_duration="false"
 _cfg_cost="false"
 _cfg_cost_bump="5"        # dollars; a session at/above this bumps the shame tier
 
+# Theming defaults (env-only). theme swaps the whole palette; palette=escalating
+# gives each shame mode its own colour region; quiet is an HH:MM-HH:MM window
+# that caps the shame escalation at mode 1.
+_cfg_theme="vibe"
+_cfg_palette="classic"
+_cfg_quiet=""
+
 # --- Load shipped messages (merged into _msg_* vars below) ---
 _messages_file="${CC_INSOMNII_HOME}/config/shame-messages.json"
 
@@ -117,6 +124,11 @@ _user_msgs="${XDG_CONFIG_HOME:-$HOME/.config}/cc-insomnii/messages.json"
 [[ -n "${CC_INSOMNII_DURATION:-}"   ]] && _cfg_duration="$CC_INSOMNII_DURATION"
 [[ -n "${CC_INSOMNII_COST:-}"       ]] && _cfg_cost="$CC_INSOMNII_COST"
 [[ -n "${CC_INSOMNII_COST_BUMP:-}"  ]] && _cfg_cost_bump="$CC_INSOMNII_COST_BUMP"
+[[ -n "${CC_INSOMNII_THEME:-}"      ]] && _cfg_theme="$CC_INSOMNII_THEME"
+[[ -n "${CC_INSOMNII_PALETTE:-}"    ]] && _cfg_palette="$CC_INSOMNII_PALETTE"
+[[ -n "${CC_INSOMNII_QUIET:-}"      ]] && _cfg_quiet="$CC_INSOMNII_QUIET"
+_cfg_theme=$(printf '%s' "$_cfg_theme" | tr '[:upper:]' '[:lower:]')
+_cfg_palette=$(printf '%s' "$_cfg_palette" | tr '[:upper:]' '[:lower:]')
 
 # --- Normalize falsy toggle scalars to the canonical "false" ---
 # The render branches gate features with `!= "false"`, so only the literal string
@@ -224,11 +236,14 @@ CONFIG
        CC_INSOMNII_RAINBOW, CC_INSOMNII_BREATHING, CC_INSOMNII_COLOR, CC_INSOMNII_ASCII,
        CC_INSOMNII_ACCESSIBLE, CC_INSOMNII_MODEL, CC_INSOMNII_CONTEXT,
        CC_INSOMNII_DURATION, CC_INSOMNII_COST, CC_INSOMNII_COST_BUMP,
+       CC_INSOMNII_THEME, CC_INSOMNII_PALETTE, CC_INSOMNII_QUIET,
        CC_INSOMNII_CONFIG, CC_INSOMNII_MESSAGES, CC_INSOMNII_HOME, CC_INSOMNII_NOW
   No-color: NO_COLOR / TERM=dumb / CC_INSOMNII_COLOR=never render without ANSI color.
        CC_INSOMNII_ACCESSIBLE=1 also drops glyphs-emoji and all animation.
   Session: CC_INSOMNII_MODEL/CONTEXT/DURATION/COST surface payload fields (model
        name, context redline, session duration, dollar cost). All OFF by default.
+  Theming: CC_INSOMNII_THEME=vibe|mono|amber|matrix|ocean, CC_INSOMNII_PALETTE=
+       classic|escalating, CC_INSOMNII_QUIET=HH:MM-HH:MM (cap shame at mode 1).
   File: $XDG_CONFIG_HOME/cc-insomnii/config.json (or ~/.config/cc-insomnii/config.json)
   Catalog override: $XDG_CONFIG_HOME/cc-insomnii/messages.json
 
@@ -365,6 +380,29 @@ _vibe_rpal=(
   $'\033[38;5;99m'
 )
 
+# --- Named themes: swap the whole palette set ---
+# vibe (default) keeps the arrays above untouched, so the default render is
+# byte-identical. The other themes replace both _vibe_pairs and _vibe_rpal; the
+# code reads their lengths dynamically (_np below, and ${#_vibe_rpal[@]} at every
+# use), so a theme may carry any number of entries. _np is recomputed after the
+# swap so the every-3s pair cycle uses the active theme's length.
+case "$_cfg_theme" in
+  mono)
+    _vibe_pairs=("255;233" "250;235" "245;233" "240;236" "252;234" "247;235" "242;233" "238;236")
+    _vibe_rpal=($'\033[38;5;255m' $'\033[38;5;250m' $'\033[38;5;245m' $'\033[38;5;240m' $'\033[38;5;235m' $'\033[38;5;248m') ;;
+  amber)
+    _vibe_pairs=("214;233" "220;234" "208;233" "178;235" "222;233" "202;236" "215;234" "166;233")
+    _vibe_rpal=($'\033[38;5;214m' $'\033[38;5;220m' $'\033[38;5;208m' $'\033[38;5;178m' $'\033[38;5;222m' $'\033[38;5;202m') ;;
+  matrix)
+    _vibe_pairs=("46;233" "40;232" "34;233" "82;234" "118;232" "28;233" "154;234" "22;232")
+    _vibe_rpal=($'\033[38;5;46m' $'\033[38;5;40m' $'\033[38;5;82m' $'\033[38;5;118m' $'\033[38;5;34m' $'\033[38;5;154m') ;;
+  ocean)
+    _vibe_pairs=("39;233" "45;17" "51;18" "33;17" "27;18" "75;233" "81;17" "21;18")
+    _vibe_rpal=($'\033[38;5;39m' $'\033[38;5;45m' $'\033[38;5;51m' $'\033[38;5;33m' $'\033[38;5;75m' $'\033[38;5;81m') ;;
+  *) : ;;  # vibe / unknown → keep the default palette
+esac
+_np=${#_vibe_pairs[@]}
+
 # --- Determine render mode ---
 # Mode 0:  -30 ≤ delta < 0   (approaching bedtime, ≤30 min away)
 # Mode 1:    0 ≤ delta < 60  (bedtime to +1h)
@@ -410,6 +448,31 @@ elif [[ "$_cfg_motivation" != "false" ]] && (( _now_min >= 420 && _now_min < 960
   _render_mode="motivation"
 elif (( _dw_min > 0 && _now_min >= _dw_min && _now_min < 420 && _dw_min < 420 )); then
   _render_mode="dawn"
+fi
+
+# --- Quiet-hours softener: cap an active shame mode at mode 1 inside a window ---
+# For users who must stay up (on-call): inside CC_INSOMNII_QUIET=HH:MM-HH:MM the
+# shame escalation is held at mode 1 — no strobe, decay, swarm or rapid blink.
+# Applied AFTER the dawn-override above, so even a mode-5 dawn render is softened.
+# A malformed value warns on stderr and is ignored (the statusline stays clean).
+if [[ -n "$_cfg_quiet" ]]; then
+  if [[ "$_cfg_quiet" =~ ^([0-9]{1,2}:[0-9]{2})-([0-9]{1,2}:[0-9]{2})$ ]]; then
+    _q_start=$(_parse_hhmm "${BASH_REMATCH[1]}")
+    _q_end=$(_parse_hhmm "${BASH_REMATCH[2]}")
+    _quiet_active=0
+    if (( _q_start <= _q_end )); then
+      (( _now_min >= _q_start && _now_min < _q_end )) && _quiet_active=1
+    else
+      (( _now_min >= _q_start || _now_min < _q_end )) && _quiet_active=1
+    fi
+    if (( _quiet_active )); then
+      case "$_render_mode" in
+        mode2|mode3|mode4|mode5) _render_mode="mode1" ;;
+      esac
+    fi
+  else
+    printf 'cc-insomnii: invalid CC_INSOMNII_QUIET %s (want HH:MM-HH:MM); ignoring\n' "$_cfg_quiet" >&2
+  fi
 fi
 
 # --- Sanitize a catalog string for the one-line contract ---
@@ -604,12 +667,21 @@ case "$_render_mode" in
     # Numeric mode for arithmetic
     _vm="${_render_mode#mode}"
 
-    # Color pair for this render (cycle every 3s, 24 pairs)
-    IFS=';' read -r _pfg _pbg <<< "${_vibe_pairs[$(( (_ts / 3) % _np ))]}"
+    # Color pair for this render (cycle every 3s). With CC_INSOMNII_PALETTE=
+    # escalating each shame mode anchors a different region of the active palette,
+    # so the mode is legible from colour alone; classic (default) is the single
+    # shared cycle and renders byte-identically.
+    if [[ "$_cfg_palette" == "escalating" ]]; then
+      _pair_idx=$(( ( (_ts / 3) + _vm * 5 ) % _np ))
+      _rbase=$(( ( (_ts / 2) + _vm * 2 ) % ${#_vibe_rpal[@]} ))
+    else
+      _pair_idx=$(( (_ts / 3) % _np ))
+      _rbase=$(( (_ts / 2) % ${#_vibe_rpal[@]} ))
+    fi
+    IFS=';' read -r _pfg _pbg <<< "${_vibe_pairs[$_pair_idx]}"
     _VFG=$'\033[38;5;'"${_pfg}"'m'
     _VBG=$'\033[48;5;'"${_pbg}"'m'
     (( _no_color )) && { _VFG=""; _VBG=""; }
-    _rbase=$(( (_ts / 2) % ${#_vibe_rpal[@]} ))
 
     # Blink type: mode 1-2 = slow, mode 3-4 = rapid, mode 4 alternates per second (strobe)
     _blink="${BLINK}"

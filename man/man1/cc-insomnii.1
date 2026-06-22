@@ -211,6 +211,31 @@ Whole-dollar threshold at or above which
 bumps the shame message tier. Default:
 .BR 5 .
 .TP
+.B CC_INSOMNII_THEME
+Color theme, selecting the whole palette set:
+.BR vibe " (default rainbow), " mono " (grayscale), " amber ", " matrix
+(green), or
+.BR ocean " (blue)."
+An unknown value falls back to
+.BR vibe .
+.TP
+.B CC_INSOMNII_PALETTE
+With
+.BR escalating ,
+each shame mode anchors a different region of the active palette so the mode is
+legible from color alone;
+.B classic
+(the default) keeps the single shared 3-second cycle. Default:
+.BR classic .
+.TP
+.B CC_INSOMNII_QUIET
+A
+.I HH:MM\-HH:MM
+window (wrapping past midnight is allowed) in which an active shame mode is
+capped at mode 1: the message and elapsed counter remain, but the strobe,
+char-decay and glyph swarm are suppressed \(em for users who must stay up. A
+malformed value warns on stderr and is ignored. Default: unset.
+.TP
 .B CC_INSOMNII_CONFIG
 Override path to the user config file. Default:
 .IR ${XDG_CONFIG_HOME:-$HOME/.config}/cc-insomnii/config.json .
