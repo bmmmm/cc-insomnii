@@ -168,6 +168,49 @@ leaving a stable
 line in every mode. A falsy spelling disables it. Default:
 .BR false .
 .TP
+.B CC_INSOMNII_MODEL
+Show the model name from the statusline payload
+.RI ( model.display_name )
+as a dim badge in the calm modes (plain, motivation, dawn). The name is printed
+verbatim, so any family \(em Opus, Sonnet, Haiku, Fable \(em surfaces without a
+code change. Default:
+.BR false .
+.TP
+.B CC_INSOMNII_CONTEXT
+Paint a red
+.B [!]
+marker before the clock when the session is deep into its context window:
+.I context_window.used_percentage
+at 80 or above, or the legacy
+.I exceeds_200k_tokens
+flag. Default:
+.BR false .
+.TP
+.B CC_INSOMNII_DURATION
+Append the session duration
+.RI ( cost.total_duration_ms ,
+formatted
+.IR Hh Mm )
+to the clock. Default:
+.BR false .
+.TP
+.B CC_INSOMNII_COST
+In shame modes, append the session dollar cost
+.RI ( cost.total_cost_usd ,
+as
+.IR $X.XX )
+to the shame text, and \(em at or above
+.B CC_INSOMNII_COST_BUMP
+dollars \(em escalate the shame message one tier so an expensive early session
+reads as harshly as a much later free one. Default:
+.BR false .
+.TP
+.B CC_INSOMNII_COST_BUMP
+Whole-dollar threshold at or above which
+.B CC_INSOMNII_COST
+bumps the shame message tier. Default:
+.BR 5 .
+.TP
 .B CC_INSOMNII_CONFIG
 Override path to the user config file. Default:
 .IR ${XDG_CONFIG_HOME:-$HOME/.config}/cc-insomnii/config.json .

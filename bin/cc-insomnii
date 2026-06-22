@@ -54,6 +54,15 @@ _cfg_color=""
 _cfg_ascii="false"
 _cfg_accessible="false"
 
+# Session-data defaults (env-only; all OFF so the default render is unchanged).
+# These surface fields from the Claude Code statusline payload: the model name,
+# the context-window pressure, the session duration, and the dollar cost.
+_cfg_model="false"
+_cfg_context="false"
+_cfg_duration="false"
+_cfg_cost="false"
+_cfg_cost_bump="5"        # dollars; a session at/above this bumps the shame tier
+
 # --- Load shipped messages (merged into _msg_* vars below) ---
 _messages_file="${CC_INSOMNII_HOME}/config/shame-messages.json"
 
@@ -103,6 +112,11 @@ _user_msgs="${XDG_CONFIG_HOME:-$HOME/.config}/cc-insomnii/messages.json"
 [[ -n "${CC_INSOMNII_COLOR:-}"      ]] && _cfg_color="$CC_INSOMNII_COLOR"
 [[ -n "${CC_INSOMNII_ASCII:-}"      ]] && _cfg_ascii="$CC_INSOMNII_ASCII"
 [[ -n "${CC_INSOMNII_ACCESSIBLE:-}" ]] && _cfg_accessible="$CC_INSOMNII_ACCESSIBLE"
+[[ -n "${CC_INSOMNII_MODEL:-}"      ]] && _cfg_model="$CC_INSOMNII_MODEL"
+[[ -n "${CC_INSOMNII_CONTEXT:-}"    ]] && _cfg_context="$CC_INSOMNII_CONTEXT"
+[[ -n "${CC_INSOMNII_DURATION:-}"   ]] && _cfg_duration="$CC_INSOMNII_DURATION"
+[[ -n "${CC_INSOMNII_COST:-}"       ]] && _cfg_cost="$CC_INSOMNII_COST"
+[[ -n "${CC_INSOMNII_COST_BUMP:-}"  ]] && _cfg_cost_bump="$CC_INSOMNII_COST_BUMP"
 
 # --- Normalize falsy toggle scalars to the canonical "false" ---
 # The render branches gate features with `!= "false"`, so only the literal string
@@ -122,6 +136,11 @@ _cfg_rainbow=$(_normalize_toggle "$_cfg_rainbow")
 _cfg_breathing=$(_normalize_toggle "$_cfg_breathing")
 _cfg_ascii=$(_normalize_toggle "$_cfg_ascii")
 _cfg_accessible=$(_normalize_toggle "$_cfg_accessible")
+_cfg_model=$(_normalize_toggle "$_cfg_model")
+_cfg_context=$(_normalize_toggle "$_cfg_context")
+_cfg_duration=$(_normalize_toggle "$_cfg_duration")
+_cfg_cost=$(_normalize_toggle "$_cfg_cost")
+[[ "$_cfg_cost_bump" =~ ^[0-9]+$ ]] || _cfg_cost_bump="5"
 
 # --- Robustness flags: color / glyph / animation suppression ---
 # Accessible mode is the strongest: it implies no color, ASCII glyphs, and no
@@ -203,10 +222,13 @@ USAGE
 CONFIG
   Env: CC_INSOMNII_BEDTIME, CC_INSOMNII_DAWN, CC_INSOMNII_SHAME, CC_INSOMNII_MOTIVATION,
        CC_INSOMNII_RAINBOW, CC_INSOMNII_BREATHING, CC_INSOMNII_COLOR, CC_INSOMNII_ASCII,
-       CC_INSOMNII_ACCESSIBLE, CC_INSOMNII_CONFIG, CC_INSOMNII_MESSAGES,
-       CC_INSOMNII_HOME, CC_INSOMNII_NOW
+       CC_INSOMNII_ACCESSIBLE, CC_INSOMNII_MODEL, CC_INSOMNII_CONTEXT,
+       CC_INSOMNII_DURATION, CC_INSOMNII_COST, CC_INSOMNII_COST_BUMP,
+       CC_INSOMNII_CONFIG, CC_INSOMNII_MESSAGES, CC_INSOMNII_HOME, CC_INSOMNII_NOW
   No-color: NO_COLOR / TERM=dumb / CC_INSOMNII_COLOR=never render without ANSI color.
        CC_INSOMNII_ACCESSIBLE=1 also drops glyphs-emoji and all animation.
+  Session: CC_INSOMNII_MODEL/CONTEXT/DURATION/COST surface payload fields (model
+       name, context redline, session duration, dollar cost). All OFF by default.
   File: $XDG_CONFIG_HOME/cc-insomnii/config.json (or ~/.config/cc-insomnii/config.json)
   Catalog override: $XDG_CONFIG_HOME/cc-insomnii/messages.json
 
@@ -501,6 +523,57 @@ _drip_char() {
 # --- Breathing color escape for a given 256-color base ---
 _breath_phase=$(( (_ts * 4) % 32 ))  # full cycle every 8 seconds
 
+# --- Session data from the statusline payload (one batched jq pass) ---
+# Surfaces fields the script previously ignored: the model name (calm-mode
+# badge), context-window pressure (clock redline), session duration (clock tag),
+# and dollar cost (shame tier bump + tag). The jq call runs ONLY when at least
+# one of those features is enabled, so the default render is both byte-identical
+# and free of an extra jq invocation. Cost is read as integer cents — jq does the
+# float, bash stays integer-only (no bc/awk). Split on US (0x1f), never tab.
+_model_name=""; _cost_cents=0; _dur_ms=0; _ctx_pct=""; _ctx_exceeds=0
+_session_on=0
+[[ "$_cfg_model"    != "false" ]] && _session_on=1
+[[ "$_cfg_context"  != "false" ]] && _session_on=1
+[[ "$_cfg_duration" != "false" ]] && _session_on=1
+[[ "$_cfg_cost"     != "false" ]] && _session_on=1
+if (( _session_on )); then
+  _session=$(printf '%s' "$_json" | jq -r '
+    [ (.model.display_name // ""),
+      (((.cost.total_cost_usd // 0) * 100) | floor),
+      (.cost.total_duration_ms // 0),
+      (if (.context_window.used_percentage | type) == "number"
+         then (.context_window.used_percentage | floor) else "" end),
+      (if .exceeds_200k_tokens == true then "1" else "0" end)
+    ] | map(tostring) | join([31] | implode)
+  ' 2>/dev/null) || _session=""
+  IFS=$'\x1f' read -r _model_name _cost_cents _dur_ms _ctx_pct _ctx_exceeds <<< "$_session"
+  [[ "$_cost_cents"  =~ ^[0-9]+$ ]] || _cost_cents=0
+  [[ "$_dur_ms"      =~ ^[0-9]+$ ]] || _dur_ms=0
+  [[ "$_ctx_pct"     =~ ^[0-9]+$ ]] || _ctx_pct=""
+  [[ "$_ctx_exceeds" == "1"      ]] || _ctx_exceeds=0
+fi
+
+# Derived display bits (empty/0 unless the feature is on AND the data is present).
+# The model badge shows whatever Claude Code reports in model.display_name
+# (Opus / Sonnet / Haiku / Fable / …) verbatim — no hard-coded family list, so a
+# new model surfaces correctly without a code change.
+_dur_tag=""
+if [[ "$_cfg_duration" != "false" ]] && (( _dur_ms > 0 )); then
+  _dur_tm=$(( _dur_ms / 60000 ))
+  if (( _dur_tm >= 60 )); then _dur_tag="$(( _dur_tm / 60 ))h$(( _dur_tm % 60 ))m"; else _dur_tag="${_dur_tm}m"; fi
+fi
+_model_badge=""
+[[ "$_cfg_model" != "false" && -n "$_model_name" ]] && _model_badge=$(_sanitize "$_model_name")
+_ctx_alarm=0
+if [[ "$_cfg_context" != "false" ]]; then
+  if [[ -n "$_ctx_pct" ]] && (( _ctx_pct >= 80 )); then _ctx_alarm=1
+  elif (( _ctx_exceeds )); then _ctx_alarm=1; fi
+fi
+_cost_tag=""
+if [[ "$_cfg_cost" != "false" ]] && (( _cost_cents > 0 )); then
+  _cost_tag=$(printf '$%d.%02d' "$(( _cost_cents / 100 ))" "$(( _cost_cents % 100 ))")
+fi
+
 # --- Render ---
 _output=""
 
@@ -558,7 +631,7 @@ case "$_render_mode" in
     elif (( _ck_m == 0 ));                  then _ck_suffix=" +${_ck_h}h"
     else                                         _ck_suffix=" +${_ck_h}h${_ck_m}m"; fi
 
-    _clock_text="${_hhmm}${_ck_suffix}"
+    _clock_text="${_hhmm}${_ck_suffix}${_dur_tag:+ ${_dur_tag}}"
 
     # Mode 5: apply char decay to clock (glitch effect). Skipped under no-color:
     # decayed █ with no color differentiation is unreadable noise, not a glitch.
@@ -569,6 +642,18 @@ case "$_render_mode" in
       _rainbow=$(_build_rainbow "$_clock_text" "$_wave_speed" "$_rbase" "$_blink" "$_vm")
     else
       _rainbow="${BOLD}${_clock_text}${RST}"
+    fi
+
+    # Context-window redline: a bright-red [!] marker before the clock when the
+    # session is deep into its context window (used_percentage >= 80, or the
+    # legacy exceeds_200k flag). A leading token, so it survives the rainbow's
+    # per-character resets; a plain [!] under no-color.
+    if (( _ctx_alarm )); then
+      if (( _no_color )); then
+        _rainbow="[!] ${_rainbow}"
+      else
+        _rainbow=$'\033[1;38;5;196m[!]'"${RST} ${_rainbow}"
+      fi
     fi
 
     # Glyph selection
@@ -588,8 +673,13 @@ case "$_render_mode" in
       _glyph3="${_glyph_pool[$(( ((_ts / 7) + 10) % _np_g ))]}"
     fi
 
-    # Shame message
-    _vm_text=$(_pick_message "$_vm" "GO TO BED")
+    # Shame message — a costly session bumps the message tier one step (the pool
+    # widens to the harder pool above), while the visual mode stays at _vm.
+    _msg_vm="$_vm"
+    if [[ "$_cfg_cost" != "false" ]] && (( _cost_cents >= _cfg_cost_bump * 100 && _msg_vm < 5 )); then
+      _msg_vm=$(( _msg_vm + 1 ))
+    fi
+    _vm_text=$(_pick_message "$_msg_vm" "GO TO BED")
 
     # Matrix drip prefix for mode 3+ (suppressed under no-animation / accessible)
     _drip_prefix=""
@@ -606,7 +696,7 @@ case "$_render_mode" in
 
     _shame_ul="";   (( _vm >= 2 )) && _shame_ul="${UNDERLINE}"
     _shame_rev="";  (( _ts % 2 == 1 && _vm >= 4 )) && _shame_rev="${REVERSE}"
-    _shame_block="${_shame_rev}${_VBG}${_shame_fg}${BOLD}${_blink}${_shame_ul} ${_drip_prefix}${_vm_text} ${RST}"
+    _shame_block="${_shame_rev}${_VBG}${_shame_fg}${BOLD}${_blink}${_shame_ul} ${_drip_prefix}${_vm_text}${_cost_tag:+ ${_cost_tag}} ${RST}"
 
     # Assemble line based on mode. The mode-5 swarm branch is taken only when the
     # extra glyphs were built (same `_vm >= 5 && ! _no_anim` guard), so accessible
@@ -622,18 +712,18 @@ case "$_render_mode" in
   # ---- MOTIVATION: 07:00-15:59 ----
   motivation)
     _mot_text=$(_pick_message motivation "let's go")
-    _output="${DIM}${_sparkle_glyph} ${_hhmm}${RST}  ${CYAN}${_mot_text}${RST}"
+    _output="${DIM}${_sparkle_glyph} ${_hhmm}${RST}  ${CYAN}${_mot_text}${RST}${_model_badge:+  ${DIM}${_model_badge}${RST}}"
     ;;
 
   # ---- DAWN: 04:00-06:59 ----
   dawn)
     _dawn_text=$(_pick_message dawn "still here?")
-    _output="${DIM}${_glyph_dawn} ${_hhmm}${RST}  ${WHITE}${_dawn_text}${RST}"
+    _output="${DIM}${_glyph_dawn} ${_hhmm}${RST}  ${WHITE}${_dawn_text}${RST}${_model_badge:+  ${DIM}${_model_badge}${RST}}"
     ;;
 
   # ---- PLAIN: no shame, no special context ----
   plain)
-    _output="${DIM}${_glyph_moon} ${_hhmm}${RST}"
+    _output="${DIM}${_glyph_moon} ${_hhmm}${RST}${_model_badge:+  ${DIM}${_model_badge}${RST}}"
     ;;
 
 esac

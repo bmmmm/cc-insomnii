@@ -179,6 +179,11 @@ over `config.json`.
 | `CC_INSOMNII_COLOR`      | (auto)    | `never`/`false`/… forces a no-color line; `always`/`force` keeps color even under `NO_COLOR` |
 | `CC_INSOMNII_ASCII`      | `false`   | Swap the emoji glyph pools for 7-bit ASCII (for emoji-incapable terminals) |
 | `CC_INSOMNII_ACCESSIBLE` | `false`   | Screen-reader-friendly line: no color, ASCII glyphs, no blink/decay/swarm/drip |
+| `CC_INSOMNII_MODEL`      | `false`   | Show the model (`model.display_name`) as a badge in the calm modes (plain/motivation/dawn) |
+| `CC_INSOMNII_CONTEXT`    | `false`   | Red `[!]` clock marker when the context window is ≥ 80% full (or `exceeds_200k_tokens`) |
+| `CC_INSOMNII_DURATION`   | `false`   | Append the session duration (`cost.total_duration_ms`) to the clock, e.g. `3h12m` |
+| `CC_INSOMNII_COST`       | `false`   | Append the session cost (`$X.XX`) in shame modes; a costly session also bumps the message tier |
+| `CC_INSOMNII_COST_BUMP`  | `5`       | Whole-dollar threshold at/above which `CC_INSOMNII_COST` bumps the shame message tier |
 | `CC_INSOMNII_CONFIG`     | (auto)    | Override config file path                        |
 | `CC_INSOMNII_MESSAGES`   | (auto)    | Override shame messages file path                |
 | `CC_INSOMNII_NOW`        | (clock)   | Preview any mode as if it were this `HH:MM` time |
@@ -208,6 +213,20 @@ glyphs, and no blink/decay/swarm/drip — just a stable `time +elapsed message`
 line in every mode. `CC_INSOMNII_ASCII=1` swaps only the emoji for ASCII while
 keeping color. These are environment-only (terminal capability, not project
 config) and never change the default colored render.
+
+**Session data.** cc-insomnii receives the same JSON payload Claude Code sends
+every statusline, and can weave a few of its fields into the line — all OFF by
+default, so the default render is untouched. `CC_INSOMNII_MODEL` shows the model
+as a calm-mode badge (`☾ 22:30  Opus`); it prints `model.display_name`
+verbatim, so any model — Opus, Sonnet, Haiku, Fable, or one that ships
+tomorrow — surfaces correctly with no code change. `CC_INSOMNII_DURATION`
+appends how long the session has been running (`23:14 +14m 3h12m`).
+`CC_INSOMNII_CONTEXT` paints a red `[!]` before the clock once the context
+window is ≥ 80% full (using `context_window.used_percentage`, falling back to
+the legacy `exceeds_200k_tokens`). `CC_INSOMNII_COST` appends the dollar spend
+in shame modes (`GO TO BED  $4.20`) and, past `CC_INSOMNII_COST_BUMP` dollars,
+escalates the shame one message tier — so an expensive 1 a.m. session reads as
+harshly as a free 4 a.m. one. These too are environment-only.
 
 An invalid `CC_INSOMNII_BEDTIME` or `CC_INSOMNII_DAWN` (not `HH:MM`, or outside
 `00:00`–`23:59`) is rejected: cc-insomnii prints a warning to stderr and falls
