@@ -78,14 +78,20 @@ Path to the cc-insomnii installation directory. Used to locate
 .B CC_INSOMNII_BEDTIME
 Bedtime in
 .I HH:MM
-24-hour format. Default:
+24-hour format. An evening or night value is assumed (see
+.BR MODES ).
+An invalid value (not
+.IR HH:MM ,
+or outside 00:00\-23:59) is rejected with a warning on stderr and falls back to
+the default so the statusline still renders. Default:
 .BR 23:00 .
 .TP
 .B CC_INSOMNII_DAWN
 Dawn threshold in
 .I HH:MM
-24-hour format. Coding past this time triggers mode 5 regardless of elapsed
-time since bedtime. Default:
+24-hour format. While a shame mode is active, being up past this time (until the
+06:00 morning cutoff) forces mode 5. An invalid value is rejected with a warning
+on stderr and falls back to the default. Default:
 .BR 04:00 .
 .TP
 .B CC_INSOMNII_SHAME
@@ -176,9 +182,20 @@ elapsed time (+Xm), a rotating shame message, and a slow blink.
 Messages are at maximum urgency.
 .TP
 .B Mode 5 \- Post-dawn
-More than 4 hours past bedtime, or current time is past the dawn threshold
-(default 04:00). Char-decay clock, a three-glyph swarm, and the doom glyph set.
-You are no longer making good decisions.
+More than 4 hours past bedtime, or \(em while a shame mode is active \(em the
+current time is past the dawn threshold (default 04:00, applied between dawn and
+the 06:00 morning cutoff). Char-decay clock, a three-glyph swarm, and the doom
+glyph set. You are no longer making good decisions.
+.PP
+Overnight shame assumes an evening or night bedtime (>= 18:00): the elapsed
+counter wraps across midnight and runs until the ~06:00 morning cutoff, after
+which the dawn and motivation windows take over. A bedtime set at or after
+midnight, or before 18:00 (e.g.
+.IR 00:30 ,
+.IR 02:00 ,
+.IR 14:00 )
+is a known limitation \(em the overnight wrap does not apply there, so the
+elapsed escalation is inaccurate. Use an evening bedtime.
 .SH FILES
 .TP
 .I ${CC_INSOMNII_HOME}/config/shame-messages.json

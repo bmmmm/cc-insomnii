@@ -82,36 +82,38 @@ _contains "mode2: wrap +1h30m" "+1h30m" "$out"
 out=$(_render 01:30 23:00 04:00 true) || out="<render failed: $?>"
 _contains "mode3: +2h30m" "+2h30m" "$out"
 
-# mode 4 / mode 5 boundary — mode 5 decays the clock (digits become █), so its
-# suffix cannot be asserted literally. Instead hold NOW fixed (identical epoch →
-# identical glyph, message and decay seed) and move BEDTIME one minute across the
-# +4h line: at delta 239 the render is an intact mode 4, at delta 240 it flips to
-# mode 5. The boundary is the only variable, so the inequality isolates the jump.
+# mode 4 / mode 5 boundary — mode 5 decays the clock (digits become █), the block
+# glyph U+2588 that ONLY mode 5 emits. Hold NOW fixed (identical epoch → identical
+# glyph, message and decay seed) and move BEDTIME one minute across the +4h line:
+# at delta 239 the render is an intact mode 4 (no █), at delta 240 it flips to mode
+# 5 (decay → █). Asserting the mode5-EXCLUSIVE signal (not mere inequality) means a
+# mode4 regression that merely *differs* can no longer pass. The chosen epoch's
+# matrix-drip char is not █, so the only █ source is mode-5 decay.
 mode4=$(_render 03:30 23:31 04:00 true) || mode4="<render failed A: $?>"  # delta 239m
 mode5=$(_render 03:30 23:30 04:00 true) || mode5="<render failed B: $?>"  # delta 240m
 _contains "mode4: intact +3h59m suffix" "+3h59m" "$mode4"
-if [[ "$mode4" == "$mode5" ]]; then
-  printf 'FAIL mode5: crossing +4h did not change the render (mode 5 not firing)\n'
-  printf '      mode4 (+3h59m): %s\n' "$mode4"
-  printf '      mode5 (+4h0m):  %s\n' "$mode5"
+if [[ "$mode4" == *█* ]]; then
+  printf 'FAIL mode4: intact render unexpectedly contains the mode-5 decay block █\n      got: %s\n' "$mode4"
   fails=$(( fails + 1 ))
 fi
+_contains "mode5: decay block █ present" "█" "$mode5"
 
-# Dawn override — the only branch that forces mode 5 on a sub-+4h delta. Hold
-# NOW and BEDTIME fixed (so epoch, delta, glyph index and message are identical)
-# and move ONLY the dawn threshold across the current time. At 04:30 with a 02:00
-# bedtime the delta is +2h30m (mode 3 territory); the sole difference between the
-# two renders is whether 04:30 counts as "past dawn", so any inequality isolates
-# the override.
-no_override=$(_render 04:30 02:00 05:00 true) || no_override="<render failed A: $?>"
-override=$(_render 04:30 02:00 04:00 true)    || override="<render failed B: $?>"
-_contains "dawn-override: delta is +2h30m" "+2h30m" "$no_override"
-if [[ "$no_override" == "$override" ]]; then
-  printf 'FAIL dawn-override: crossing dawn did not change the render (override not firing)\n'
-  printf '      pre-dawn : %s\n' "$no_override"
-  printf '      past-dawn: %s\n' "$override"
+# Dawn override — the only branch that forces mode 5 on a sub-+4h delta. It now
+# fires only in the post-midnight window (now < bedtime) past the dawn threshold,
+# so it can no longer de-escalate an evening render. Hold NOW and BEDTIME fixed
+# (epoch, delta, glyph index and message identical) and move ONLY the dawn
+# threshold across the current time. At 02:30 with a 23:00 bedtime the wrapped
+# delta is +3h30m (mode 4 territory, no █); the sole difference between the two
+# renders is whether 02:30 counts as "past dawn". Asserting the mode5-exclusive █
+# (not inequality) pins the override ON without a mode4 regression sneaking through.
+no_override=$(_render 02:30 23:00 03:30 true) || no_override="<render failed A: $?>"  # dawn 03:30 > now → off
+override=$(_render 02:30 23:00 02:00 true)    || override="<render failed B: $?>"     # dawn 02:00 < now → on
+_contains "dawn-override OFF: intact +3h30m suffix" "+3h30m" "$no_override"
+if [[ "$no_override" == *█* ]]; then
+  printf 'FAIL dawn-override OFF: pre-dawn render unexpectedly decayed (█ present)\n      got: %s\n' "$no_override"
   fails=$(( fails + 1 ))
 fi
+_contains "dawn-override ON: decay block █ present" "█" "$override"
 
 # motivation window — 10:00, bedtime long off: dim sparkle, no shame.
 out=$(_render 10:00 23:00 04:00 true) || out="<render failed: $?>"

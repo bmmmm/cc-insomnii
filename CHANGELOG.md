@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- `install.sh --after` no longer mangles a multi-argument wrapped command: the command is preserved as a single quoted token instead of being re-split on whitespace.
+- jq message/config handling hardened: malformed `config.json` and `messages.json` degrade to the shipped baseline instead of erroring, a scalar `"shame": false` (where a nested object was expected) is now honoured as a disable instead of being silently ignored, and a non-numeric/non-array key in a custom message catalog no longer collapses the whole shame pool.
+- Mode 5 state no longer leaks decay/swarm artefacts into a subsequent lower-mode render (reset between renders).
+- Test harness: `SKIP` is now gated correctly (a skipped test no longer counts as a pass), and `make bench` reports per-render time in microseconds.
+- `CC_INSOMNII_BEDTIME` / `CC_INSOMNII_DAWN` (and the equivalent config keys) are validated: an out-of-range or malformed value warns on stderr and falls back to the built-in default instead of silently becoming `00:00`, keeping the statusline clean.
+- Test coverage: the mode-5/dawn-override assertions now check the mode-5-exclusive decay block glyph (a mode-4 regression that merely differed could previously slip through), plus new coverage for `--version`/`-V`, `CC_INSOMNII_NOW` validation, the evening midnight-wrap (no-regression) and config resilience, and bedtime/dawn validation.
+
 ## [0.2.0] - 2026-06-14
 
 ### Added
