@@ -47,6 +47,13 @@ _cfg_motivation="true"
 _cfg_rainbow="true"
 _cfg_breathing="true"
 
+# Robustness defaults (env-only: terminal-capability and accessibility settings
+# live in the environment, not the project config). _cfg_color is tri-state:
+# "" = auto, a falsy spelling = force no-color, anything else = force color on.
+_cfg_color=""
+_cfg_ascii="false"
+_cfg_accessible="false"
+
 # --- Load shipped messages (merged into _msg_* vars below) ---
 _messages_file="${CC_INSOMNII_HOME}/config/shame-messages.json"
 
@@ -93,6 +100,9 @@ _user_msgs="${XDG_CONFIG_HOME:-$HOME/.config}/cc-insomnii/messages.json"
 [[ -n "${CC_INSOMNII_RAINBOW:-}"   ]] && _cfg_rainbow="$CC_INSOMNII_RAINBOW"
 [[ -n "${CC_INSOMNII_BREATHING:-}" ]] && _cfg_breathing="$CC_INSOMNII_BREATHING"
 [[ -n "${CC_INSOMNII_MESSAGES:-}"  ]] && _messages_file="$CC_INSOMNII_MESSAGES"
+[[ -n "${CC_INSOMNII_COLOR:-}"      ]] && _cfg_color="$CC_INSOMNII_COLOR"
+[[ -n "${CC_INSOMNII_ASCII:-}"      ]] && _cfg_ascii="$CC_INSOMNII_ASCII"
+[[ -n "${CC_INSOMNII_ACCESSIBLE:-}" ]] && _cfg_accessible="$CC_INSOMNII_ACCESSIBLE"
 
 # --- Normalize falsy toggle scalars to the canonical "false" ---
 # The render branches gate features with `!= "false"`, so only the literal string
@@ -110,6 +120,39 @@ _cfg_shame=$(_normalize_toggle "$_cfg_shame")
 _cfg_motivation=$(_normalize_toggle "$_cfg_motivation")
 _cfg_rainbow=$(_normalize_toggle "$_cfg_rainbow")
 _cfg_breathing=$(_normalize_toggle "$_cfg_breathing")
+_cfg_ascii=$(_normalize_toggle "$_cfg_ascii")
+_cfg_accessible=$(_normalize_toggle "$_cfg_accessible")
+
+# --- Robustness flags: color / glyph / animation suppression ---
+# Accessible mode is the strongest: it implies no color, ASCII glyphs, and no
+# animation, for a stable screen-reader-friendly line. NO_COLOR (any non-empty
+# value, per the no-color.org convention) and CC_INSOMNII_COLOR=never|false|0|...
+# suppress color; CC_INSOMNII_COLOR=always|force overrides NO_COLOR to keep color.
+# TERM=dumb is treated as no-color. With all of these unset/auto and a real TERM,
+# every flag is 0 and the default colored render is byte-identical.
+_no_color=0
+_no_anim=0
+_ascii_on=0
+_color_force=0
+[[ "$_cfg_ascii" != "false" ]] && _ascii_on=1
+case "$(printf '%s' "${_cfg_color:-}" | tr '[:upper:]' '[:lower:]')" in
+  always|force|on|true|1|yes|enabled) _color_force=1 ;;
+  0|no|off|false|disabled|never)       _no_color=1 ;;
+esac
+if (( ! _color_force )); then
+  [[ -n "${NO_COLOR:-}" ]] && _no_color=1
+  [[ "${TERM:-}" == "dumb" ]] && _no_color=1
+fi
+if [[ "$_cfg_accessible" != "false" ]]; then
+  _no_color=1; _ascii_on=1; _no_anim=1
+fi
+if (( _no_color )); then
+  # Blank every scalar SGR constant; the inline rainbow/_VFG/_VBG/_shame_fg
+  # escapes are blanked at their build sites below, and rainbow is forced off so
+  # the clock takes the plain (now bold-less) path. Decay is skipped at mode 5.
+  RST=""; DIM=""; BOLD=""; BLINK=""; BLINK2=""; REVERSE=""; UNDERLINE=""; CYAN=""; WHITE=""
+  _cfg_rainbow="false"
+fi
 
 # --- Validate bedtime/dawn (after all layers, before parsing) ---
 # A value is valid iff it is HH:MM with hour<=23 and minute<=59. 00:00 is
@@ -159,8 +202,11 @@ USAGE
 
 CONFIG
   Env: CC_INSOMNII_BEDTIME, CC_INSOMNII_DAWN, CC_INSOMNII_SHAME, CC_INSOMNII_MOTIVATION,
-       CC_INSOMNII_RAINBOW, CC_INSOMNII_BREATHING, CC_INSOMNII_CONFIG, CC_INSOMNII_MESSAGES,
+       CC_INSOMNII_RAINBOW, CC_INSOMNII_BREATHING, CC_INSOMNII_COLOR, CC_INSOMNII_ASCII,
+       CC_INSOMNII_ACCESSIBLE, CC_INSOMNII_CONFIG, CC_INSOMNII_MESSAGES,
        CC_INSOMNII_HOME, CC_INSOMNII_NOW
+  No-color: NO_COLOR / TERM=dumb / CC_INSOMNII_COLOR=never render without ANSI color.
+       CC_INSOMNII_ACCESSIBLE=1 also drops glyphs-emoji and all animation.
   File: $XDG_CONFIG_HOME/cc-insomnii/config.json (or ~/.config/cc-insomnii/config.json)
   Catalog override: $XDG_CONFIG_HOME/cc-insomnii/messages.json
 
@@ -259,6 +305,21 @@ _sparkle_glyph="✦"
 # Matrix-rain charset for drip animation
 _drip_chars=("0" "1" "░" "▒" "▓" "█" "╳" "◢" "◣" "◤" "◥")
 
+# Plain-mode and dawn glyphs (overridden by ASCII mode below)
+_glyph_moon="☾"
+_glyph_dawn="🌅"
+
+# ASCII glyph fallback for emoji-incapable terminals and accessible mode. Swaps
+# the emoji pools and the single moon/sparkle/dawn glyphs for 7-bit equivalents.
+if (( _ascii_on )); then
+  _night_glyphs=("zZ" "(" "o" "*" "~" "x_x" "!!" "+" "@" "o_o" "[~]" "(!)" "//" "z" "v" "_")
+  _doom_glyphs=("X" "+" "#" "%" "*" "!!" "x_x" "@" "/!\\" "==" "X_X")
+  _sparkle_glyph="*"
+  _drip_chars=("0" "1" "." ":" "|" "#" "x" "/" "\\" "<" ">")
+  _glyph_moon=")"
+  _glyph_dawn="o/"
+fi
+
 # --- 24 color pairs for rainbow wave (fg;bg) — cycle every 3s ---
 _vibe_pairs=(
   "219;53"  "51;17"   "226;88"  "201;54"
@@ -329,6 +390,17 @@ elif (( _dw_min > 0 && _now_min >= _dw_min && _now_min < 420 && _dw_min < 420 ))
   _render_mode="dawn"
 fi
 
+# --- Sanitize a catalog string for the one-line contract ---
+# Strip C0 control bytes and ESC (so a malformed messages.json can't break the
+# single-line output or inject its own SGR), and fold TAB/CR/LF to spaces. The
+# delete range 000-010,013,014,016-037 intentionally leaves 011/012/015
+# (TAB/LF/CR), which the second tr maps to spaces; 177 (DEL) is dropped too.
+# LC_ALL=C makes tr byte-oriented so multibyte UTF-8 (e.g. the em-dash in the
+# shipped catalog) passes through untouched — its bytes are all >127.
+_sanitize() {
+  printf '%s' "$1" | LC_ALL=C tr -d '\000-\010\013\014\016-\037\177' | LC_ALL=C tr '\011\012\015' '   '
+}
+
 # --- Pick shame/motivation message from catalog ---
 _pick_message() {
   local _mode_num="$1"  # integer 0-5 for shame, "motivation", "dawn"
@@ -369,6 +441,7 @@ _pick_message() {
   esac
 
   [[ -z "$_result" || "$_result" == "null" ]] && _result="$_fallback"
+  _result=$(_sanitize "$_result")
   printf '%s' "$_result"
 }
 
@@ -462,6 +535,7 @@ case "$_render_mode" in
     IFS=';' read -r _pfg _pbg <<< "${_vibe_pairs[$(( (_ts / 3) % _np ))]}"
     _VFG=$'\033[38;5;'"${_pfg}"'m'
     _VBG=$'\033[48;5;'"${_pbg}"'m'
+    (( _no_color )) && { _VFG=""; _VBG=""; }
     _rbase=$(( (_ts / 2) % ${#_vibe_rpal[@]} ))
 
     # Blink type: mode 1-2 = slow, mode 3-4 = rapid, mode 4 alternates per second (strobe)
@@ -486,8 +560,9 @@ case "$_render_mode" in
 
     _clock_text="${_hhmm}${_ck_suffix}"
 
-    # Mode 5: apply char decay to clock (glitch effect)
-    (( _vm >= 5 )) && _clock_text=$(_apply_decay "$_clock_text")
+    # Mode 5: apply char decay to clock (glitch effect). Skipped under no-color:
+    # decayed █ with no color differentiation is unreadable noise, not a glitch.
+    (( _vm >= 5 && ! _no_color )) && _clock_text=$(_apply_decay "$_clock_text")
 
     # Build rainbow clock (or plain if rainbow disabled)
     if [[ "$_cfg_rainbow" != "false" ]]; then
@@ -506,8 +581,9 @@ case "$_render_mode" in
     _vg_idx=$(( (_ts / 5) % _np_g ))
     _glyph="${_glyph_pool[$_vg_idx]}"
 
-    # Mode 5: two additional glyphs (independently rotating) for swarm
-    if (( _vm >= 5 )); then
+    # Mode 5: two additional glyphs (independently rotating) for swarm. Suppressed
+    # under no-animation (accessible) so the line stays a single calm glyph.
+    if (( _vm >= 5 && ! _no_anim )); then
       _glyph2="${_glyph_pool[$(( ((_ts / 3) + 5) % _np_g ))]}"
       _glyph3="${_glyph_pool[$(( ((_ts / 7) + 10) % _np_g ))]}"
     fi
@@ -515,9 +591,9 @@ case "$_render_mode" in
     # Shame message
     _vm_text=$(_pick_message "$_vm" "GO TO BED")
 
-    # Matrix drip prefix for mode 3+
+    # Matrix drip prefix for mode 3+ (suppressed under no-animation / accessible)
     _drip_prefix=""
-    (( _vm >= 3 )) && _drip_prefix=$(_drip_char)
+    (( _vm >= 3 && ! _no_anim )) && _drip_prefix=$(_drip_char)
 
     # Shame text block — breathing modulates color at mode 1+ if enabled
     _shame_fg="${_vibe_rpal[$(( (_rbase + 4) % ${#_vibe_rpal[@]} ))]}"
@@ -526,13 +602,16 @@ case "$_render_mode" in
       _breath_offset=$(( ${_SINE[$_breath_phase]} * ${#_vibe_rpal[@]} / 100 ))
       _shame_fg="${_vibe_rpal[$(( (_rbase + 4 + _breath_offset) % ${#_vibe_rpal[@]} ))]}"
     fi
+    (( _no_color )) && _shame_fg=""
 
     _shame_ul="";   (( _vm >= 2 )) && _shame_ul="${UNDERLINE}"
     _shame_rev="";  (( _ts % 2 == 1 && _vm >= 4 )) && _shame_rev="${REVERSE}"
     _shame_block="${_shame_rev}${_VBG}${_shame_fg}${BOLD}${_blink}${_shame_ul} ${_drip_prefix}${_vm_text} ${RST}"
 
-    # Assemble line based on mode
-    if (( _vm >= 5 )); then
+    # Assemble line based on mode. The mode-5 swarm branch is taken only when the
+    # extra glyphs were built (same `_vm >= 5 && ! _no_anim` guard), so accessible
+    # mode falls through to the single-glyph line and never references unset vars.
+    if (( _vm >= 5 && ! _no_anim )); then
       # Glyph swarm: glyph1 <clock> glyph2<drip+shame>glyph3
       _output="${_blink}${_glyph}${RST} ${_rainbow}  ${_glyph2}${_shame_block}${_glyph3}${RST}"
     else
@@ -549,12 +628,12 @@ case "$_render_mode" in
   # ---- DAWN: 04:00-06:59 ----
   dawn)
     _dawn_text=$(_pick_message dawn "still here?")
-    _output="${DIM}🌅 ${_hhmm}${RST}  ${WHITE}${_dawn_text}${RST}"
+    _output="${DIM}${_glyph_dawn} ${_hhmm}${RST}  ${WHITE}${_dawn_text}${RST}"
     ;;
 
   # ---- PLAIN: no shame, no special context ----
   plain)
-    _output="${DIM}☾ ${_hhmm}${RST}"
+    _output="${DIM}${_glyph_moon} ${_hhmm}${RST}"
     ;;
 
 esac

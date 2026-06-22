@@ -176,6 +176,9 @@ over `config.json`.
 | `CC_INSOMNII_MOTIVATION` | `true`    | Enable morning motivation (07:00-15:59)          |
 | `CC_INSOMNII_RAINBOW`    | `true`    | Enable rainbow character-chase animation         |
 | `CC_INSOMNII_BREATHING`  | `true`    | Enable breathing pulse on glyph and shame text color cycling (modes 1+) |
+| `CC_INSOMNII_COLOR`      | (auto)    | `never`/`false`/… forces a no-color line; `always`/`force` keeps color even under `NO_COLOR` |
+| `CC_INSOMNII_ASCII`      | `false`   | Swap the emoji glyph pools for 7-bit ASCII (for emoji-incapable terminals) |
+| `CC_INSOMNII_ACCESSIBLE` | `false`   | Screen-reader-friendly line: no color, ASCII glyphs, no blink/decay/swarm/drip |
 | `CC_INSOMNII_CONFIG`     | (auto)    | Override config file path                        |
 | `CC_INSOMNII_MESSAGES`   | (auto)    | Override shame messages file path                |
 | `CC_INSOMNII_NOW`        | (clock)   | Preview any mode as if it were this `HH:MM` time |
@@ -188,10 +191,23 @@ over `config.json`.
 > ```
 
 The toggle variables (`CC_INSOMNII_SHAME`, `CC_INSOMNII_MOTIVATION`,
-`CC_INSOMNII_RAINBOW`, `CC_INSOMNII_BREATHING`, and their `config.json`
-equivalents) treat `false`, `0`, `no`, `off`, and `disabled` — in any case — as
-off. Any other value is on. The same spellings work in `config.json`, as a
-scalar (`"shame": "off"`) or nested (`"shame": { "enabled": false }`).
+`CC_INSOMNII_RAINBOW`, `CC_INSOMNII_BREATHING`, `CC_INSOMNII_ASCII`,
+`CC_INSOMNII_ACCESSIBLE`, and their `config.json` equivalents) treat `false`,
+`0`, `no`, `off`, and `disabled` — in any case — as off. Any other value is on.
+The same spellings work in `config.json`, as a scalar (`"shame": "off"`) or
+nested (`"shame": { "enabled": false }`).
+
+**No-color and accessible output.** cc-insomnii honors the
+[`NO_COLOR`](https://no-color.org/) convention: when `NO_COLOR` is set to any
+non-empty value (or `TERM=dumb`, or `CC_INSOMNII_COLOR=never`), the line renders
+with no ANSI color — every escape is dropped, the rainbow chase falls back to
+plain text, and the mode-5 char-decay is skipped so the clock stays legible.
+`CC_INSOMNII_COLOR=always` forces color on even when `NO_COLOR` is set.
+`CC_INSOMNII_ACCESSIBLE=1` goes further for screen readers: no color, ASCII
+glyphs, and no blink/decay/swarm/drip — just a stable `time +elapsed message`
+line in every mode. `CC_INSOMNII_ASCII=1` swaps only the emoji for ASCII while
+keeping color. These are environment-only (terminal capability, not project
+config) and never change the default colored render.
 
 An invalid `CC_INSOMNII_BEDTIME` or `CC_INSOMNII_DAWN` (not `HH:MM`, or outside
 `00:00`–`23:59`) is rejected: cc-insomnii prints a warning to stderr and falls

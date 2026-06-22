@@ -139,6 +139,35 @@ Enable or disable the breathing pulse animation on the glyph; it also cycles the
 shame text color in modes 1 and up. Default:
 .BR true .
 .TP
+.B CC_INSOMNII_COLOR
+Color override. A falsy value
+.RB ( never ", " false ", " 0 ", " no ", " off ", " disabled )
+forces a no-color line: every ANSI escape is dropped, the rainbow chase falls
+back to plain text, and the mode-5 char-decay is skipped so the clock stays
+legible. A truthy value
+.RB ( always ", " force ", " on ", " true )
+keeps color on even when
+.B NO_COLOR
+is set. Unset (auto) keeps the default colored render. cc-insomnii also honors
+the
+.B NO_COLOR
+convention (any non-empty value) and
+.BR "TERM=dumb" .
+.TP
+.B CC_INSOMNII_ASCII
+Swap the emoji glyph pools \(em night, doom, sparkle, moon, dawn \(em for 7-bit
+ASCII equivalents, for terminals or fonts without emoji support. Color is kept.
+A falsy spelling (as above) disables it. Default:
+.BR false .
+.TP
+.B CC_INSOMNII_ACCESSIBLE
+Screen-reader / accessible mode. Implies no color and ASCII glyphs, and drops
+every animation (blink, reverse, strobe, char-decay, glyph swarm, matrix drip),
+leaving a stable
+.I time +elapsed message
+line in every mode. A falsy spelling disables it. Default:
+.BR false .
+.TP
 .B CC_INSOMNII_CONFIG
 Override path to the user config file. Default:
 .IR ${XDG_CONFIG_HOME:-$HOME/.config}/cc-insomnii/config.json .
