@@ -26,7 +26,7 @@ done
 
 # Determine install prefix
 if [[ -z "$PREFIX" ]]; then
-  if [[ -w /usr/local/share ]]; then
+  if [[ -w /usr/local/share && -w /usr/local/bin ]]; then
     PREFIX="/usr/local/share/cc-insomnii"
     BIN_DIR="/usr/local/bin"
   else
@@ -64,13 +64,13 @@ fi
 # Install
 echo "Installing cc-insomnii to $PREFIX ..."
 
-mkdir -p "$PREFIX"
-mkdir -p "$BIN_DIR"
+mkdir -p "$PREFIX" || { echo "Error: cannot create $PREFIX (check permissions)" >&2; exit 1; }
+mkdir -p "$BIN_DIR" || { echo "Error: cannot create $BIN_DIR (check permissions)" >&2; exit 1; }
 
 # Copy repo files (skip .git, tmp, test artifacts)
 rsync -a --exclude='.git' --exclude='tmp/' --exclude='*.log' \
   "$SCRIPT_DIR/" "$PREFIX/" 2>/dev/null \
-  || cp -R "$SCRIPT_DIR/." "$PREFIX/"
+  || { cp -R "$SCRIPT_DIR/." "$PREFIX/"; rm -rf "$PREFIX/.git" "$PREFIX/tmp"; find "$PREFIX" -name '*.log' -exec rm -f {} +; }
 
 chmod +x "$PREFIX/bin/cc-insomnii" 2>/dev/null || true
 
@@ -82,7 +82,7 @@ else
     echo "Error: $BIN_LINK exists and is not a symlink. Remove it manually." >&2
     exit 1
   fi
-  ln -sf "$BIN_SRC" "$BIN_LINK"
+  ln -sf "$BIN_SRC" "$BIN_LINK" || { echo "Error: cannot create symlink $BIN_LINK (check permissions or remove manually)" >&2; exit 1; }
   echo "  Symlinked: $BIN_LINK -> $BIN_SRC"
 fi
 
@@ -136,14 +136,8 @@ JSON
     echo "cc-insomnii's line renders FIRST (top), your existing output below it."
     echo "No overwrite, no reorder of your existing tool — just one line above:"
     echo ""
-    cat <<JSON
-{
-  "statusLine": {
-    "type": "command",
-    "command": "cc-insomnii --after=$EXISTING_CMD"
-  }
-}
-JSON
+    _wrapped_cmd=$(jq -nr --arg c "$EXISTING_CMD" '"cc-insomnii --after=" + (if ($c | test("[^a-zA-Z0-9_/.-]")) then ($c | @sh) else $c end)')
+    jq -n --arg cmd "$_wrapped_cmd" '{statusLine: {type: "command", command: $cmd}}'
     echo ""
     echo "Alternative — replace your statusLine entirely (you LOSE everything"
     echo "that '$EXISTING_CMD' renders — only do this if you understand that):"
