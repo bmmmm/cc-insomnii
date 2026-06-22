@@ -223,8 +223,8 @@ wraps across midnight, and the night runs until the ~06:00 morning cutoff, after
 which the dawn and motivation windows take over. While a shame mode is active,
 being up past the dawn threshold (between dawn and 06:00) forces mode 5. A
 **daytime bedtime** (`06:00`–`17:59`, e.g. `09:00`, `14:00`) is outside this
-range — the night still ends at the fixed 06:00 cutoff, so the escalation there
-is inaccurate; use an evening or night bedtime.
+range — the night-window model assumes the night spans the 06:00 cutoff, so the
+escalation there is inaccurate; use an evening or night bedtime.
 
 Dawn greeting (🌅, dawn threshold to 07:00): when no shame mode is active in
 that window — typically with shame disabled — a dim sunrise glyph and a quiet

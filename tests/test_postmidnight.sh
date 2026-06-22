@@ -63,12 +63,12 @@ _not_contains() { # LABEL NEEDLE HAYSTACK
 # Well before bedtime (> 30 min): plain moon, no approach yet.
 out=$(_render 00:00 01:00 04:00 true) || out="<render failed: $?>"
 _contains   "01:00 bedtime @ 00:00: plain moon" "☾" "$out"
-_not_contains "01:00 bedtime @ 00:00: no elapsed suffix" "+" "$out"
+_not_contains "01:00 bedtime @ 00:00: no elapsed suffix" " +" "$out"
 
 # 15 min before bedtime: mode-0 sparkle approach (delta -15), no elapsed suffix.
 out=$(_render 00:45 01:00 04:00 true) || out="<render failed: $?>"
 _contains   "01:00 bedtime @ 00:45: sparkle approach" "✦" "$out"
-_not_contains "01:00 bedtime @ 00:45: no elapsed suffix yet" "+" "$out"
+_not_contains "01:00 bedtime @ 00:45: no elapsed suffix yet" " +" "$out"
 
 # 30 min past bedtime: mode 1.
 out=$(_render 01:30 01:00 04:00 true) || out="<render failed: $?>"
@@ -85,13 +85,13 @@ _contains "01:00 bedtime @ 05:59: mode-5 decay block █" "█" "$out"
 # 06:00 — the night window closes: hand off to the dawn greeting, no shame.
 out=$(_render 06:00 01:00 04:00 true) || out="<render failed: $?>"
 _contains   "01:00 bedtime @ 06:00: dawn glyph" "🌅" "$out"
-_not_contains "01:00 bedtime @ 06:00: no elapsed suffix" "+" "$out"
+_not_contains "01:00 bedtime @ 06:00: no elapsed suffix" " +" "$out"
 
 # 08:00 — THE FIX: the morning no longer pins mode 5. Old code kept (now-bedtime)
 # positive all day → doom; now it is a calm motivation sparkle, no shame, no decay.
 out=$(_render 08:00 01:00 04:00 true) || out="<render failed: $?>"
 _contains   "01:00 bedtime @ 08:00: motivation sparkle (shame off)" "✦" "$out"
-_not_contains "01:00 bedtime @ 08:00: no elapsed suffix (not shame)" "+" "$out"
+_not_contains "01:00 bedtime @ 08:00: no elapsed suffix (not shame)" " +" "$out"
 _not_contains "01:00 bedtime @ 08:00: no mode-5 decay block" "█" "$out"
 
 # Midnight-crossing approach: bedtime 00:15, now 23:50 (10 min before, delta -25
@@ -99,7 +99,7 @@ _not_contains "01:00 bedtime @ 08:00: no mode-5 decay block" "█" "$out"
 # backward across midnight too.
 out=$(_render 23:50 00:15 04:00 true) || out="<render failed: $?>"
 _contains   "00:15 bedtime @ 23:50: approach wraps backward across midnight" "✦" "$out"
-_not_contains "00:15 bedtime @ 23:50: no elapsed suffix" "+" "$out"
+_not_contains "00:15 bedtime @ 23:50: no elapsed suffix" " +" "$out"
 
 if (( fails > 0 )); then
   printf '\n%d assertion(s) failed\n' "$fails"

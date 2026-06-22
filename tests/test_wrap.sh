@@ -87,7 +87,7 @@ _contains "evening bedtime 23:00 @ 00:30 wraps to +1h30m" "+1h30m" "$evening"
 # render is neither approach nor shame — the plain moon, no elapsed suffix.
 afternoon=$(_render 02:00 14:00 04:00 true) || afternoon="<render failed: $?>"
 _contains "daytime bedtime 14:00 @ 02:00 stays plain moon" "☾" "$afternoon"
-_not_contains "daytime bedtime 14:00 @ 02:00 carries no elapsed suffix" "+" "$afternoon"
+_not_contains "daytime bedtime 14:00 @ 02:00 carries no elapsed suffix" " +" "$afternoon"
 
 # --- Lowest evening bedtime still wraps into shame ---
 # 18:00 @ 01:00 is 7h past bedtime → a shame mode with an elapsed suffix.
@@ -104,7 +104,7 @@ cut_before=$(_render 05:59 23:00 04:00 true) || cut_before="<render failed: $?>"
 cut_after=$(_render 06:00 23:00 04:00 true)  || cut_after="<render failed: $?>"
 _contains "23:00 @ 05:59 still in shame window (mode-5 decay █)" "█" "$cut_before"
 _contains "23:00 @ 06:00 hands off to dawn glyph"               "🌅" "$cut_after"
-_not_contains "23:00 @ 06:00 carries no elapsed suffix"         "+"  "$cut_after"
+_not_contains "23:00 @ 06:00 carries no elapsed suffix"         " +" "$cut_after"
 
 # --- Resilience: malformed config.json == no-config baseline ---
 # A syntactically broken config must not change the render vs no config at all.

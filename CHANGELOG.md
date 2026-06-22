@@ -11,7 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - After-midnight bedtimes are now supported. A bedtime in `18:00`–`05:59` (e.g. `01:00`) shows the mode-0 approach in the 30 minutes before, escalates through the shame modes after, and hands off to the dawn/motivation day modes at the 06:00 morning cutoff — instead of the previous behaviour where `(now - bedtime)` stayed positive all day and pinned mode 5 from ~05:00 until midnight.
 
 ### Changed
-- The elapsed-since-bedtime counter is now the shortest signed distance to bedtime on the 24-hour circle (centered remainder), replacing the evening-only "+1440 if before 06:00 and bedtime ≥ 18:00" wrap. A night-window gate bounds the shame/approach modes to `[bedtime-30min, 06:00)`, so the night always ends at the 06:00 cutoff regardless of bedtime. Evening/night bedtimes (`≥ 18:00`) render byte-identically to before — verified across all 1440 minutes for eleven bedtimes from 18:00 to 23:59. A daytime bedtime (`06:00`–`17:59`) is still outside the supported range and best-effort.
+- The elapsed-since-bedtime counter is now the shortest signed distance to bedtime on the 24-hour circle (centered remainder), replacing the evening-only "+1440 if before 06:00 and bedtime ≥ 18:00" wrap. A night-window gate bounds the shame/approach modes to `[bedtime-30min, 06:00)` on the 24-hour circle, so for a supported bedtime the night ends at the 06:00 cutoff. Evening/night bedtimes (`≥ 18:00`) render byte-identically to before — verified across all 1440 minutes for eleven bedtimes from 18:00 to 23:59. A daytime bedtime (`06:00`–`17:59`) is still outside the supported range and best-effort.
 
 ## [0.2.1] - 2026-06-22
 
