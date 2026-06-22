@@ -1,13 +1,13 @@
 .PHONY: install uninstall test lint bench clean
 
 install:
-	bash install.sh
+	bash install.sh $${PREFIX:+--prefix=$$PREFIX}
 
 uninstall:
-	bash install.sh --uninstall
+	bash install.sh $${PREFIX:+--prefix=$$PREFIX} --uninstall
 
 test:
-	bash tests/run.sh
+	/bin/bash tests/run.sh
 
 lint:
 	shellcheck bin/cc-insomnii install.sh tests/*.sh scripts/*.sh

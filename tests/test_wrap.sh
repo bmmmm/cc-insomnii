@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+#!/bin/bash
 # tests/test_wrap.sh — midnight-wrap delta + morning cutoff + config resilience.
 #
 # Pins the centered-circle delta model: the elapsed counter is the shortest

@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+#!/bin/bash
 # tests/test_validation.sh — input validation and --version.
 #
 # Covers three contracts:

@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+#!/bin/bash
 # tests/test_config.sh — regression: nested config.json toggles must be honored,
 # including the `false` case. Two historical bugs lived here: the parser read
 # flat dotted keys (."shame.enabled") instead of the documented nested form, and
@@ -43,6 +43,7 @@ _run() {
   printf '%s' "$PAYLOAD" | env \
     -u CC_INSOMNII_SHAME -u CC_INSOMNII_MESSAGES -u CC_INSOMNII_HOME \
     -u CC_INSOMNII_CONFIG -u CC_INSOMNII_DAWN \
+    -u CC_INSOMNII_MOTIVATION -u CC_INSOMNII_RAINBOW -u CC_INSOMNII_BREATHING \
     CC_INSOMNII_NOW="$NOW" CC_INSOMNII_BEDTIME="$BT" XDG_CONFIG_HOME="$CFG_HOME" "$BIN" 2>&1
 }
 

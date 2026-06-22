@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+#!/bin/bash
 # tests/test_modes.sh — mode-matrix regression.
 #
 # Pins the render mode for every branch of the time logic by injecting the wall
@@ -69,6 +69,13 @@ out=$(_render 22:45 23:00 04:00 true) || out="<render failed: $?>"
 _contains "mode0: sparkle glyph" "✦" "$out"
 _contains "mode0: clock"         "22:45" "$out"
 
+# mode 0 with shame disabled — the approach sparkle is gated by the night window
+# and the -30..0 delta, NOT by the shame toggle. Disabling shame suppresses the
+# escalation (modes 1-5) but the gentle approach indicator still renders, so a
+# regression that accidentally shame-gated mode 0 would surface here.
+out=$(_render 22:45 23:00 04:00 false) || out="<render failed: $?>"
+_contains "mode0 with shame=false: sparkle still renders" "✦" "$out"
+
 # mode 1 — 30 min past bedtime.
 out=$(_render 23:30 23:00 04:00 true) || out="<render failed: $?>"
 _contains "mode1: +30m elapsed" "+30m" "$out"
@@ -98,6 +105,21 @@ if [[ "$mode4" == *█* ]]; then
 fi
 _contains "mode5: decay block █ present" "█" "$mode5"
 
+# Mode-5 decay must DEGRADE the clock, not OBLITERATE it. The earlier per-char
+# hash collapsed the entire HH:MM to █ (an unreadable "██:██") whenever the time
+# seed was a multiple of 10. Pin exactly such an epoch: NOW=03:00 with a 23:00
+# bedtime gives _ts=10800, seed=10800%997=830 (830%10==0) and delta +4h → mode 5.
+# Assert the clock is decayed (█ present) yet NOT fully collapsed — the "██:██"
+# all-block HH:MM the old hash produced here must not appear, and the colon must
+# survive. A bare █-present check passes under the OLD hash too; this does not.
+collapse=$(_render 03:00 23:00 04:00 true) || collapse="<render failed: $?>"
+_contains "mode5 collapse-guard: decay block █ present" "█" "$collapse"
+if [[ "$collapse" == *"██:██"* ]]; then
+  printf 'FAIL mode5 collapse-guard: HH:MM fully decayed to ██:██ (decay obliterated the clock)\n      got: %s\n' "$collapse"
+  fails=$(( fails + 1 ))
+fi
+_contains "mode5 collapse-guard: colon survives decay" ":" "$collapse"
+
 # Dawn override — the only branch that forces mode 5 on a sub-+4h delta. It now
 # fires only in the post-midnight window (now < bedtime) past the dawn threshold,
 # so it can no longer de-escalate an evening render. Hold NOW and BEDTIME fixed
@@ -124,6 +146,17 @@ _contains "motivation: clock"         "10:00" "$out"
 out=$(_render 05:00 23:00 04:00 false) || out="<render failed: $?>"
 _contains "dawn: sunrise glyph" "🌅" "$out"
 _contains "dawn: clock"         "05:00" "$out"
+
+# Falsy toggle spellings — CC_INSOMNII_SHAME accepts 0/no/off/disabled (any case)
+# as "off", like the literal false. At 00:30 with a 23:00 bedtime shame would
+# render +1h30m; each falsy spelling must instead fall back to the plain moon,
+# while a non-falsy value (yes) stays in shame. Pins the _normalize_toggle path.
+for _falsy in off OFF 0 no disabled false; do
+  fo=$(_render 00:30 23:00 04:00 "$_falsy") || fo="<render failed: $?>"
+  _contains "shame=$_falsy disables shame (plain moon)" "☾" "$fo"
+done
+on=$(_render 00:30 23:00 04:00 yes) || on="<render failed: $?>"
+_contains "shame=yes stays enabled (+1h30m)" "+1h30m" "$on"
 
 if (( fails > 0 )); then
   printf '\n%d assertion(s) failed\n' "$fails"

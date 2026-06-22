@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+#!/bin/bash
 # tests/bench.sh — render-time benchmark for bin/cc-insomnii.
 #
 # Not a pass/fail test (run.sh only globs test_*.sh, so this is excluded); it is

@@ -12,6 +12,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 - The elapsed-since-bedtime counter is now the shortest signed distance to bedtime on the 24-hour circle (centered remainder), replacing the evening-only "+1440 if before 06:00 and bedtime ≥ 18:00" wrap. A night-window gate bounds the shame/approach modes to `[bedtime-30min, 06:00)` on the 24-hour circle, so for a supported bedtime the night ends at the 06:00 cutoff. Evening/night bedtimes (`≥ 18:00`) render byte-identically to before — verified across all 1440 minutes for eleven bedtimes from 18:00 to 23:59. A daytime bedtime (`06:00`–`17:59`) is still outside the supported range and best-effort.
+- `install.sh` detects an existing cc-insomnii statusLine by its launcher word, so a command that already carries arguments (e.g. `cc-insomnii --after=…`) is recognised as already-installed instead of being offered a snippet that would wrap cc-insomnii in itself. The installed copy now ships only the runtime files — the `tests/`, `scripts/`, `Makefile`, `CLAUDE.md`, `.claude/`, and `.claudeignore` dev trees are excluded.
+- `make test` runs the suite under `/bin/bash` (the macOS bash 3.2 runtime the project targets) and propagates that interpreter to every test, instead of a newer PATH `bash` that could mask 3.2 incompatibilities. `make install` and `make uninstall` now honour a `PREFIX` override.
+
+### Fixed
+- Falsy toggle scalars are honoured: `CC_INSOMNII_SHAME`, `CC_INSOMNII_MOTIVATION`, `CC_INSOMNII_RAINBOW`, `CC_INSOMNII_BREATHING` (and the `config.json` equivalents) now treat `0`, `no`, `off`, and `disabled` — in any case — as off, like the documented `false`. Previously only the literal `false` disabled a feature.
+- `--after` composition no longer makes `cc-insomnii` exit non-zero when the wrapped command produces no output: after rendering its own line the statusline always exits 0.
+- Mode-5 char-decay no longer collapses the whole clock to `█` for ~10% of seconds. The per-character hash used a multiplicative index term that degenerated to all-decay whenever the time seed was a multiple of 10; the additive replacement decays a stable ~30% of characters for every seed (the `:` separator is always preserved).
+- A custom `messages.json` whose `motivation` or `dawn` value is not an array no longer indexes into a non-array — it falls back to the built-in message, matching the guard already applied to the shame pools.
+- `CC_INSOMNII_DAWN=00:00` is treated as unset (no dawn override, no dawn greeting) instead of greeting from midnight.
+- Passing `--after` more than once is rejected with an error (exit 2) instead of silently keeping the last one.
+
+### Documentation
+- The README and man page document the falsy toggle spellings, that breathing also cycles the shame text colour (modes 1+), that the dawn→mode-5 override applies only for a dawn before 06:00 (the dawn greeting still shows for a dawn up to 06:59, and `00:00` disables both), that the mode-5 demo clock is shown intact for readability (it decays live), and that the default install needs both `/usr/local/share` and `/usr/local/bin` writable.
 
 ## [0.2.1] - 2026-06-22
 

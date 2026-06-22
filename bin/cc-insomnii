@@ -94,6 +94,23 @@ _user_msgs="${XDG_CONFIG_HOME:-$HOME/.config}/cc-insomnii/messages.json"
 [[ -n "${CC_INSOMNII_BREATHING:-}" ]] && _cfg_breathing="$CC_INSOMNII_BREATHING"
 [[ -n "${CC_INSOMNII_MESSAGES:-}"  ]] && _messages_file="$CC_INSOMNII_MESSAGES"
 
+# --- Normalize falsy toggle scalars to the canonical "false" ---
+# The render branches gate features with `!= "false"`, so only the literal string
+# "false" disables them. Accept the common falsy spellings (0, no, off, disabled)
+# — case-insensitive — so `CC_INSOMNII_SHAME=0` or a config `"shame": "off"` turns
+# the feature off like `false` does. Anything else (true, 1, yes, …) is left
+# untouched. bash 3.2 has no `${v,,}`, so lowercase via tr.
+_normalize_toggle() {
+  case "$(printf '%s' "$1" | tr '[:upper:]' '[:lower:]')" in
+    0|no|off|false|disabled) printf 'false' ;;
+    *)                       printf '%s' "$1" ;;
+  esac
+}
+_cfg_shame=$(_normalize_toggle "$_cfg_shame")
+_cfg_motivation=$(_normalize_toggle "$_cfg_motivation")
+_cfg_rainbow=$(_normalize_toggle "$_cfg_rainbow")
+_cfg_breathing=$(_normalize_toggle "$_cfg_breathing")
+
 # --- Validate bedtime/dawn (after all layers, before parsing) ---
 # A value is valid iff it is HH:MM with hour<=23 and minute<=59. 00:00 is
 # legitimate. Garbage (e.g. an unset config landing on "" → 00:00, or "25:99")
@@ -123,7 +140,9 @@ fi
 WRAP_AFTER=""
 for _arg in "$@"; do
   case "$_arg" in
-    --after=*) WRAP_AFTER="${_arg#--after=}" ;;
+    --after=*)
+      [ -n "$WRAP_AFTER" ] && { printf 'cc-insomnii: --after specified more than once\n' >&2; exit 2; }
+      WRAP_AFTER="${_arg#--after=}" ;;
     --help|-h)
       cat <<'HELP'
 cc-insomnii — bedtime shame statusline for Claude Code.
@@ -136,10 +155,12 @@ USAGE
                              a richer statusLine and want cc-insomnii on top of it
                              (not replacing it).
   cc-insomnii --help         Show this help.
+  cc-insomnii --version      Print the version and exit.
 
 CONFIG
   Env: CC_INSOMNII_BEDTIME, CC_INSOMNII_DAWN, CC_INSOMNII_SHAME, CC_INSOMNII_MOTIVATION,
-       CC_INSOMNII_RAINBOW, CC_INSOMNII_BREATHING, CC_INSOMNII_CONFIG, CC_INSOMNII_MESSAGES, CC_INSOMNII_HOME
+       CC_INSOMNII_RAINBOW, CC_INSOMNII_BREATHING, CC_INSOMNII_CONFIG, CC_INSOMNII_MESSAGES,
+       CC_INSOMNII_HOME, CC_INSOMNII_NOW
   File: $XDG_CONFIG_HOME/cc-insomnii/config.json (or ~/.config/cc-insomnii/config.json)
   Catalog override: $XDG_CONFIG_HOME/cc-insomnii/messages.json
 
@@ -304,7 +325,7 @@ elif (( _in_night_window && _delta_min >= -30 && _delta_min < 0 )); then
   _render_mode="mode0"
 elif [[ "$_cfg_motivation" != "false" ]] && (( _now_min >= 420 && _now_min < 960 )); then
   _render_mode="motivation"
-elif (( _now_min >= _dw_min && _now_min < 420 && _dw_min < 420 )); then
+elif (( _dw_min > 0 && _now_min >= _dw_min && _now_min < 420 && _dw_min < 420 )); then
   _render_mode="dawn"
 fi
 
@@ -321,11 +342,11 @@ _pick_message() {
   case "$_mode_num" in
     motivation)
       _result=$(jq -r --argjson ts "$_ts" '
-        .motivation // [] | if length > 0 then .[($ts / 30 | floor) % length] else empty end
+        .motivation // [] | if (type=="array") and length > 0 then .[($ts / 30 | floor) % length] else empty end
       ' "$_messages_file" 2>/dev/null) || _result="" ;;
     dawn)
       _result=$(jq -r --argjson ts "$_ts" '
-        .dawn // [] | if length > 0 then .[($ts / 30 | floor) % length] else empty end
+        .dawn // [] | if (type=="array") and length > 0 then .[($ts / 30 | floor) % length] else empty end
       ' "$_messages_file" 2>/dev/null) || _result="" ;;
     0)
       _result=$(jq -r --argjson ts "$_ts" '
@@ -380,8 +401,16 @@ _apply_decay() {
     _ch="${_text:$_i:1}"
     # Skip spaces and colon — keep structure legible
     if [[ "$_ch" != " " && "$_ch" != ":" ]]; then
-      # Deterministic per-char hash: (seed * (i+1) * 31) % 10
-      _hash=$(( (_seed * (_i + 1) * 31) % 10 ))
+      # Deterministic per-char hash, decay when < 3 (≈30% of chars on average).
+      # The index coefficient 3 is coprime to 10, so over any run of 10 consecutive
+      # positions exactly 3 decay — which kills the real bug: the earlier
+      # multiplicative form (seed*(i+1)*31 mod 10) collapsed to ALL-decay (an
+      # unreadable all-█ clock) whenever seed was a multiple of 10, and the
+      # additive form has no all-decay seed. A short whole-hour clock can still,
+      # for some seeds, land entirely outside the decay band and show no decay for
+      # that one second; that is harmless (the clock just stays legible briefly).
+      # The seed shifts which positions decay each second so the glitch animates.
+      _hash=$(( (_seed + _i * 3 + 7) % 10 ))
       (( _hash < 3 )) && _ch="█"
     fi
     _out+="$_ch"
@@ -535,11 +564,15 @@ printf '%s\n' "$_output"
 # --- Composition (--after=CMD): cc-insomnii line is rendered FIRST (always at
 # the top), then CMD's output is piped through and printed below. Failures
 # in CMD are silenced so cc-insomnii's line stays clean even if the wrapped
-# tool breaks. Trailing newline is normalized to keep the layout tidy.
+# tool breaks. The wrapped output always gets exactly one trailing newline:
+# $() strips any it produced, so a single printf '%s\n' re-adds one and keeps
+# the layout tidy regardless of how CMD terminated its output.
 if [[ -n "$WRAP_AFTER" ]]; then
   _wrapped_out=$(printf '%s' "$_json" | eval "$WRAP_AFTER" 2>/dev/null) || true
+  # Keep this an `if` (not `[[ … ]] && printf`): when the wrapped command yields
+  # no output this is the script's final statement, and a short-circuited && list
+  # would make cc-insomnii exit non-zero despite having printed its own line.
   if [[ -n "$_wrapped_out" ]]; then
-    printf '%s' "$_wrapped_out"
-    [[ "$_wrapped_out" != *$'\n' ]] && printf '\n'
+    printf '%s\n' "$_wrapped_out"
   fi
 fi

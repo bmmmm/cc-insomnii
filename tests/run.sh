@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+#!/bin/bash
 # tests/run.sh — cc-insomnii test harness
 # Usage: bash tests/run.sh [--summary]
 set -euo pipefail
@@ -16,10 +16,16 @@ for test_file in "$TESTS_DIR"/test_*.sh; do
   [[ -f "$test_file" ]] || continue
   name="$(basename "$test_file" .sh)"
 
+  # Run each test with the SAME interpreter running this harness ($BASH), not a
+  # bare `bash` from PATH. The 3.2 guarantee lives in the Makefile: `make test`
+  # invokes `/bin/bash tests/run.sh`, so $BASH is macOS bash 3.2 and every test
+  # runs under it — the runtime the project targets. (Invoking `bash tests/run.sh`
+  # directly with a newer PATH bash instead runs the tests under that bash; the
+  # pin is the Makefile's hardcoded /bin/bash, not this line.)
   # Capture without aborting: under `set -e` a failing `var=$(cmd)` exits the
   # script before `rc=$?` runs, which would swallow the failure entirely.
   set +e
-  output=$(bash "$test_file" 2>&1)
+  output=$("$BASH" "$test_file" 2>&1)
   rc=$?
   set -e
 

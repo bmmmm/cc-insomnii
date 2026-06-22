@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+#!/bin/bash
 # tests/test_compose.sh — verify --after=CMD composes cleanly:
 # 1. CMD's output is printed verbatim
 # 2. cc-insomnii's own line is appended below (with newline normalization)
@@ -10,6 +10,16 @@ REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 BIN="$REPO_ROOT/bin/cc-insomnii"
 TMPD=$(mktemp -d)
 trap 'rm -rf "$TMPD"' EXIT
+
+# Isolate from the developer's environment: an inherited CC_INSOMNII_* toggle or
+# a real ~/.config/cc-insomnii must not perturb the composed output we assert on.
+# TMPD has no cc-insomnii/ subdir, so no user config is picked up; the clock is
+# pinned so the cc-insomnii line is deterministic (':' always present).
+export XDG_CONFIG_HOME="$TMPD"
+export CC_INSOMNII_NOW="14:00"
+unset CC_INSOMNII_HOME CC_INSOMNII_CONFIG CC_INSOMNII_MESSAGES \
+      CC_INSOMNII_BEDTIME CC_INSOMNII_DAWN CC_INSOMNII_SHAME \
+      CC_INSOMNII_MOTIVATION CC_INSOMNII_RAINBOW CC_INSOMNII_BREATHING
 
 # Fake "other statusline tool" — echoes a recognizable marker plus the JSON
 # it received. Lets us assert (a) it ran, (b) it got the same JSON.
@@ -61,8 +71,18 @@ if [[ "$last_line" != *"OTHER_BAR_OUTPUT"* ]]; then
   echo "Last line: $last_line"; echo "Full: $plain"; exit 1
 fi
 
-# 2. CMD failure must not suppress cc-insomnii line.
+# 2. CMD failure must not suppress cc-insomnii line — and cc-insomnii itself must
+# still exit 0. A wrapped CMD that fails (or yields no output) must not leak a
+# non-zero status out of the statusline: capture rc explicitly so a regression
+# here reports clearly instead of tripping the harness's `set -e` silently.
+set +e
 output=$(echo "$PAYLOAD" | "$BIN" "--after=/nonexistent/cmd" 2>&1)
+rc=$?
+set -e
+if (( rc != 0 )); then
+  echo "FAIL compose with a failing CMD exited $rc (expected 0)"
+  echo "Output: $output"; exit 1
+fi
 plain=$(printf '%s' "$output" | LC_ALL=C sed 's/\x1b\[[0-9;]*m//g')
 if [[ "$plain" != *:* ]]; then
   echo "FAIL cc-insomnii line missing when wrapped CMD does not exist"
@@ -80,6 +100,21 @@ if (( rc != 2 )); then
 fi
 if [[ "$output" != *"unknown argument"* ]]; then
   echo "FAIL unknown arg did not print error"
+  echo "Output: $output"; exit 1
+fi
+
+# 3b. Passing --after more than once is rejected with exit 2 and a clear message
+# (a regression that silently kept the last one would otherwise go unnoticed).
+set +e
+output=$(echo "$PAYLOAD" | "$BIN" "--after=echo a" "--after=echo b" 2>&1)
+rc=$?
+set -e
+if (( rc != 2 )); then
+  echo "FAIL duplicate --after exit code: got $rc, expected 2"
+  echo "Output: $output"; exit 1
+fi
+if [[ "$output" != *"more than once"* ]]; then
+  echo "FAIL duplicate --after did not print the expected error"
   echo "Output: $output"; exit 1
 fi
 

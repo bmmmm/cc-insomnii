@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+#!/bin/bash
 # tests/test_install_safety.sh — verify install.sh detects an existing
 # Claude Code statusLine and adapts its advice instead of blindly telling
 # the user to overwrite it. We never want to be the reason someone loses

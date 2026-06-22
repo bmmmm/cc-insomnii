@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+#!/bin/bash
 # tests/test_symlink.sh — regression: when the binary is invoked through a
 # symlink (install.sh's default for system installs), CC_INSOMNII_HOME must
 # resolve to the *real* binary's directory, so the shipped catalog next to it is

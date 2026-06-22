@@ -41,7 +41,17 @@ statusline tool instead of replacing it \(em the user keeps every metric
 the original renders, with the bedtime nudge as the prominent top line. If
 .I CMD
 fails or its output is empty, the cc-insomnii line still renders cleanly
-(graceful degradation).
+(graceful degradation) and
+.B cc-insomnii
+itself exits 0.
+.IP
+Quote
+.I CMD
+when it contains spaces: the inner quotes in
+.B \-\-after='ccusage statusline'
+keep the whole command together as a single argument. Passing
+.B \-\-after
+more than once is an error (exit 2).
 .IP
 Example
 .B settings.json
@@ -90,15 +100,25 @@ the default so the statusline still renders. Default:
 .B CC_INSOMNII_DAWN
 Dawn threshold in
 .I HH:MM
-24-hour format. While a shame mode is active, being up past this time (until the
-06:00 morning cutoff) forces mode 5. An invalid value is rejected with a warning
-on stderr and falls back to the default. Default:
+24-hour format, governing two behaviors. While a shame mode is active, being
+up past this time forces mode 5 \(em this override applies only for a dawn
+before 06:00 (after the 06:00 morning cutoff the night window has already
+closed). When no shame mode is active, a dim dawn greeting (see
+.BR MODES )
+is shown from this time until 07:00, so a dawn from 00:01 to 06:59 still
+produces a greeting. A value of 00:00 is treated as unset (neither effect
+fires). An invalid value is rejected with a warning on stderr and falls back
+to the default. Default:
 .BR 04:00 .
 .TP
 .B CC_INSOMNII_SHAME
 Enable or disable shame messages. Set to
 .B false
-to silence them. Default:
+\(em or any of
+.BR 0 ", " no ", " off ", " disabled
+(any case) \(em to silence them. The
+.BR CC_INSOMNII_MOTIVATION ", " CC_INSOMNII_RAINBOW ", and " CC_INSOMNII_BREATHING
+toggles accept the same falsy spellings. Default:
 .BR true .
 .TP
 .B CC_INSOMNII_MOTIVATION
@@ -115,7 +135,8 @@ for plain bold text. Default:
 .BR true .
 .TP
 .B CC_INSOMNII_BREATHING
-Enable or disable the breathing pulse animation on the glyph. Default:
+Enable or disable the breathing pulse animation on the glyph; it also cycles the
+shame text color in modes 1 and up. Default:
 .BR true .
 .TP
 .B CC_INSOMNII_CONFIG

@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+#!/bin/bash
 # tests/test_postmidnight.sh — after-midnight bedtime support.
 #
 # The centered-circle delta + 06:00 night-window cutoff make a post-midnight

@@ -41,6 +41,11 @@ because that is the correct scope for this kind of thing.
 [mode 5, 04:12]     💀 04:12 +5h12m   GOOD MORNING. GOODBYE.   (char-decay clock, glyph swarm, doom)
 ```
 
+> The mode-5 clock is shown intact above for readability. In a live render about
+> 30% of its digits are replaced with `█` — a per-second decay glitch that
+> reseeds every second — so the time gets deliberately harder to read the longer
+> you stay up. The `:` separator is always preserved.
+
 The clock glyph rotates through a 26-glyph night pool (a separate 15-glyph doom
 set takes over at mode 5). The color pair shifts every 3 seconds. The wave
 chases across the clock digits at 3 characters per second (faster in higher
@@ -59,9 +64,10 @@ bash install.sh
 ```
 
 With no flags, `install.sh` installs to `/usr/local/share/cc-insomnii` and
-symlinks `/usr/local/bin/cc-insomnii` when `/usr/local/share` is writable,
-otherwise it falls back to `~/.local/share/cc-insomnii` and symlinks
-`~/.local/bin/cc-insomnii` — a non-root install needs no flags.
+symlinks `/usr/local/bin/cc-insomnii` when **both** `/usr/local/share` and
+`/usr/local/bin` are writable, otherwise it falls back to
+`~/.local/share/cc-insomnii` and symlinks `~/.local/bin/cc-insomnii` — a
+non-root install needs no flags.
 
 A `--prefix` install is self-contained: the binary stays at `DIR/bin/cc-insomnii`
 with no separate symlink, so add that directory to your `PATH`:
@@ -165,11 +171,11 @@ over `config.json`.
 |--------------------------|-----------|--------------------------------------------------|
 | `CC_INSOMNII_HOME`       | auto      | Path to cc-insomnii install dir                  |
 | `CC_INSOMNII_BEDTIME`    | `23:00`   | Bedtime in HH:MM (24h); `18:00`–`05:59` supported |
-| `CC_INSOMNII_DAWN`       | `04:00`   | Dawn threshold — forces mode 5 when up past it    |
+| `CC_INSOMNII_DAWN`       | `04:00`   | Dawn threshold; forces mode 5 when up past it during shame (must be `< 06:00`) |
 | `CC_INSOMNII_SHAME`      | `true`    | Enable shame messages                            |
 | `CC_INSOMNII_MOTIVATION` | `true`    | Enable morning motivation (07:00-15:59)          |
 | `CC_INSOMNII_RAINBOW`    | `true`    | Enable rainbow character-chase animation         |
-| `CC_INSOMNII_BREATHING`  | `true`    | Enable breathing pulse on glyph                  |
+| `CC_INSOMNII_BREATHING`  | `true`    | Enable breathing pulse on glyph and shame text color cycling (modes 1+) |
 | `CC_INSOMNII_CONFIG`     | (auto)    | Override config file path                        |
 | `CC_INSOMNII_MESSAGES`   | (auto)    | Override shame messages file path                |
 | `CC_INSOMNII_NOW`        | (clock)   | Preview any mode as if it were this `HH:MM` time |
@@ -180,6 +186,12 @@ over `config.json`.
 > ```bash
 > echo '{}' | CC_INSOMNII_NOW=02:00 CC_INSOMNII_BEDTIME=23:00 cc-insomnii
 > ```
+
+The toggle variables (`CC_INSOMNII_SHAME`, `CC_INSOMNII_MOTIVATION`,
+`CC_INSOMNII_RAINBOW`, `CC_INSOMNII_BREATHING`, and their `config.json`
+equivalents) treat `false`, `0`, `no`, `off`, and `disabled` — in any case — as
+off. Any other value is on. The same spellings work in `config.json`, as a
+scalar (`"shame": "off"`) or nested (`"shame": { "enabled": false }`).
 
 An invalid `CC_INSOMNII_BEDTIME` or `CC_INSOMNII_DAWN` (not `HH:MM`, or outside
 `00:00`–`23:59`) is rejected: cc-insomnii prints a warning to stderr and falls

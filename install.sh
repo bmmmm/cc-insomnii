@@ -16,7 +16,8 @@ for arg in "$@"; do
       echo ""
       echo "Options:"
       echo "  --prefix=DIR    Install to DIR (default: /usr/local/share/cc-insomnii"
-      echo "                  if writable, else ~/.local/share/cc-insomnii)"
+      echo "                  if /usr/local/share and /usr/local/bin are both"
+      echo "                  writable, else ~/.local/share/cc-insomnii)"
       echo "  --uninstall     Remove installed files"
       exit 0
       ;;
@@ -67,10 +68,17 @@ echo "Installing cc-insomnii to $PREFIX ..."
 mkdir -p "$PREFIX" || { echo "Error: cannot create $PREFIX (check permissions)" >&2; exit 1; }
 mkdir -p "$BIN_DIR" || { echo "Error: cannot create $BIN_DIR (check permissions)" >&2; exit 1; }
 
-# Copy repo files (skip .git, tmp, test artifacts)
+# Copy repo files. Ship only what the runtime needs (bin, config, man, examples,
+# README/LICENSE/CHANGELOG) — skip VCS, scratch, and dev-only trees (tests,
+# scripts, Makefile, CLAUDE.md, .claude/, .claudeignore) so the install stays lean.
 rsync -a --exclude='.git' --exclude='tmp/' --exclude='*.log' \
+  --exclude='tests/' --exclude='scripts/' --exclude='Makefile' \
+  --exclude='CLAUDE.md' --exclude='.claude/' --exclude='.claudeignore' \
   "$SCRIPT_DIR/" "$PREFIX/" 2>/dev/null \
-  || { cp -R "$SCRIPT_DIR/." "$PREFIX/"; rm -rf "$PREFIX/.git" "$PREFIX/tmp"; find "$PREFIX" -name '*.log' -exec rm -f {} +; }
+  || { cp -R "$SCRIPT_DIR/." "$PREFIX/"; \
+       rm -rf "$PREFIX/.git" "$PREFIX/tmp" "$PREFIX/tests" "$PREFIX/scripts" \
+              "$PREFIX/Makefile" "$PREFIX/CLAUDE.md" "$PREFIX/.claude" "$PREFIX/.claudeignore"; \
+       find "$PREFIX" -name '*.log' -exec rm -f {} +; }
 
 chmod +x "$PREFIX/bin/cc-insomnii" 2>/dev/null || true
 
@@ -100,7 +108,12 @@ if [[ -f "$SETTINGS" ]] && command -v jq >/dev/null 2>&1; then
   EXISTING_CMD=$(jq -r '.statusLine.command // ""' "$SETTINGS" 2>/dev/null)
 fi
 
-case "$EXISTING_CMD" in
+# Match on the launcher word only — the command may carry args (e.g.
+# `cc-insomnii --after=foo`), and we must still detect it as cc-insomnii so we
+# don't suggest wrapping cc-insomnii in itself. The full command is kept for the
+# wrap suggestion in the default case below.
+EXISTING_CMD_BIN="${EXISTING_CMD%% *}"
+case "$EXISTING_CMD_BIN" in
   cc-insomnii|*/cc-insomnii)
     echo "Detected: ~/.claude/settings.json already runs cc-insomnii. No changes needed."
     ;;
