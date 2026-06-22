@@ -23,7 +23,7 @@ for test_file in "$TESTS_DIR"/test_*.sh; do
   rc=$?
   set -e
 
-  if echo "$output" | grep -q "^SKIP"; then
+  if (( rc == 0 )) && echo "$output" | grep -q "^SKIP"; then
     (( ++skip ))
     (( SUMMARY )) || printf "  SKIP  %s\n" "$name"
   elif (( rc == 0 )); then

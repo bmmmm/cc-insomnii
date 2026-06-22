@@ -121,7 +121,7 @@ ON TOP of your existing tool instead of replacing it. cc-insomnii's line is
 {
   "statusLine": {
     "type": "command",
-    "command": "cc-insomnii --after=my-existing-statusline"
+    "command": "cc-insomnii --after='ccusage statusline'"
   }
 }
 ```

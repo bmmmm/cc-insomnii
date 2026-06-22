@@ -55,17 +55,18 @@ _user_cfg="${CC_INSOMNII_CONFIG:-${XDG_CONFIG_HOME:-$HOME/.config}/cc-insomnii/c
 if [[ -f "$_user_cfg" ]]; then
   # Read nested keys (.shame.enabled, not the literal flat key "shame.enabled").
   # Map null→"" explicitly instead of `// ""`: jq's `//` treats a literal `false`
-  # as empty, so `// ""` would make a `false` toggle unreadable. `try … catch null`
-  # guards a non-object value (e.g. "shame": true) without dropping a field and
-  # shifting the field-split below.
+  # as empty, so `// ""` would make a `false` toggle unreadable. An object-type
+  # guard ("if type==object then .enabled else .") handles both {"enabled":false}
+  # and scalar false/true without dropping a field and shifting the field-split below.
+  # Split on US (0x1f), NOT tab — see note below.
   _v=$(jq -r '
     [
       (.bedtime // ""),
       (.dawn    // ""),
-      (try .shame.enabled      catch null),
-      (try .motivation.enabled catch null),
-      (try .rainbow.enabled    catch null),
-      (try .breathing.enabled  catch null)
+      (if (.shame|type)      == "object" then .shame.enabled      else .shame      end),
+      (if (.motivation|type) == "object" then .motivation.enabled else .motivation end),
+      (if (.rainbow|type)    == "object" then .rainbow.enabled    else .rainbow    end),
+      (if (.breathing|type)  == "object" then .breathing.enabled  else .breathing  end)
     ] | map(if . == null then "" else tostring end) | join([31] | implode)
   ' "$_user_cfg" 2>/dev/null) || _v=""
   # Split on US (0x1f), NOT tab: tab is IFS-whitespace, so bash collapses runs of
@@ -163,6 +164,8 @@ if [[ -n "${CC_INSOMNII_NOW:-}" ]]; then
     _now_min=$(( _now_h * 60 + _now_m ))
     _hhmm=$(printf '%02d:%02d' "$_now_h" "$_now_m")
     _ts=$(( _now_min * 60 ))  # synthetic but stable epoch → reproducible preview
+    # NOTE: _ts = _now_min*60, so the _ts/30 message-rotation index advances by 2
+    # per previewed minute — a future test must not assume +1 minute = +1 message.
   else
     printf 'cc-insomnii: invalid CC_INSOMNII_NOW %s (want HH:MM, 00:00-23:59)\n' "$CC_INSOMNII_NOW" >&2
     exit 2
@@ -280,23 +283,29 @@ _pick_message() {
     motivation)
       _result=$(jq -r --argjson ts "$_ts" '
         .motivation // [] | if length > 0 then .[($ts / 30 | floor) % length] else empty end
-      ' "$_messages_file" 2>/dev/null) ;;
+      ' "$_messages_file" 2>/dev/null) || _result="" ;;
     dawn)
       _result=$(jq -r --argjson ts "$_ts" '
         .dawn // [] | if length > 0 then .[($ts / 30 | floor) % length] else empty end
-      ' "$_messages_file" 2>/dev/null) ;;
+      ' "$_messages_file" 2>/dev/null) || _result="" ;;
     0)
       _result=$(jq -r --argjson ts "$_ts" '
-        ."shame" // {} | ."0" // [] | if length > 0 then .[($ts / 30 | floor) % length] else empty end
-      ' "$_messages_file" 2>/dev/null) ;;
+        ( if (.shame|type)=="object" then .shame else {} end )
+        | ((."0" // []) | if type=="array" then . else [] end)
+        | if length > 0 then .[($ts / 30 | floor) % length] else empty end
+      ' "$_messages_file" 2>/dev/null) || _result="" ;;
     *)
       # Accumulate messages from mode 1 up to and including this mode. Key "0" is
       # the pre-bedtime approach pool ("30 min until bedtime") — excluded here so
       # it can't surface once bedtime has already passed.
       _result=$(jq -r --argjson mode "$_mode_num" --argjson ts "$_ts" '
-        .shame | [to_entries[] | select((.key | tonumber) > 0 and (.key | tonumber) <= $mode) | .value[]]
-        as $pool | if ($pool | length) > 0 then $pool[($ts / 30 | floor) % ($pool | length)] else empty end
-      ' "$_messages_file" 2>/dev/null) ;;
+        ( if (.shame|type)=="object" then .shame else {} end )
+        | [ to_entries | sort_by(.key|tonumber? // -1) | .[]
+            | select((.key|tonumber? // -1) > 0 and (.key|tonumber? // -1) <= $mode)
+            | .value | (if type=="array" then . else [] end) | .[]
+            | select(type=="string") ] as $pool
+        | if ($pool | length) > 0 then $pool[($ts / 30 | floor) % ($pool | length)] else empty end
+      ' "$_messages_file" 2>/dev/null) || _result="" ;;
   esac
 
   [[ -z "$_result" || "$_result" == "null" ]] && _result="$_fallback"
@@ -326,7 +335,7 @@ _build_rainbow() {
 # --- Char decay: replace ~30% of clock chars with █ at mode 4+ ---
 # Uses _ts as seed so output is stable within one second.
 _apply_decay() {
-  local _text="$1" _out="" _i _ch _seed
+  local _text="$1" _out="" _i _ch _seed _hash
   _seed=$(( _ts % 997 ))  # prime mod for cheap pseudo-rand
   for (( _i=0; _i<${#_text}; _i++ )); do
     _ch="${_text:$_i:1}"
@@ -457,7 +466,7 @@ case "$_render_mode" in
     # Assemble line based on mode
     if (( _vm >= 5 )); then
       # Glyph swarm: glyph1 <clock> glyph2<drip+shame>glyph3
-      _output="${_blink}${_glyph}${RST} ${_rainbow}  ${_glyph2}${_shame_block}${_glyph3}"
+      _output="${_blink}${_glyph}${RST} ${_rainbow}  ${_glyph2}${_shame_block}${_glyph3}${RST}"
     else
       _output="${_blink}${_glyph}${RST} ${_rainbow}  ${_shame_block}"
     fi
