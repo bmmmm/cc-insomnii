@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-06-22
+
 ### Added
 - After-midnight bedtimes are now supported. A bedtime in `18:00`–`05:59` (e.g. `01:00`) shows the mode-0 approach in the 30 minutes before, escalates through the shame modes after, and hands off to the dawn/motivation day modes at the 06:00 morning cutoff — instead of the previous behaviour where `(now - bedtime)` stayed positive all day and pinned mode 5 from ~05:00 until midnight.
 
@@ -75,7 +77,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `install.sh` with `--prefix` and `--uninstall` flags
 - Test harness in `tests/run.sh` with `--summary` flag
 
-[Unreleased]: https://github.com/bmmmm/cc-insomnii/compare/v0.2.1...HEAD
+[Unreleased]: https://github.com/bmmmm/cc-insomnii/compare/v0.3.0...HEAD
+[0.3.0]: https://github.com/bmmmm/cc-insomnii/compare/v0.2.1...v0.3.0
 [0.2.1]: https://github.com/bmmmm/cc-insomnii/compare/v0.2.0...v0.2.1
 [0.2.0]: https://github.com/bmmmm/cc-insomnii/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/bmmmm/cc-insomnii/releases/tag/v0.1.0

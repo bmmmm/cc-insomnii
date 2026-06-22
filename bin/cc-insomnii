@@ -6,7 +6,7 @@
 set -euo pipefail
 
 # Version — keep in sync with man/man1/cc-insomnii.1 (.TH) and CHANGELOG.md.
-_VERSION="0.2.1"
+_VERSION="0.3.0"
 
 # --- Guard: jq required ---
 if ! command -v jq >/dev/null 2>&1; then
