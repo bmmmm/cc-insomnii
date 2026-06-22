@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- `install.sh --after` no longer mangles a multi-argument wrapped command: the command is preserved as a single quoted token instead of being re-split on whitespace.
+- jq message/config handling hardened: malformed `config.json` and `messages.json` degrade to the shipped baseline instead of erroring, and a scalar `"shame": false` (where a nested object was expected) no longer shifts the bedtime field — the bedtime is still parsed.
+- Mode 5 state no longer leaks decay/swarm artefacts into a subsequent lower-mode render (reset between renders).
+- Test harness: `SKIP` is now gated correctly (a skipped test no longer counts as a pass), and `make bench` reports per-render time in microseconds.
+- Midnight-wrap generalized: a non-evening bedtime (e.g. an afternoon `14:00`) now escalates in the early-morning hours instead of silently showing the plain clock. The wrap fires whenever the current time is before today's bedtime and it is the small hours (before ~06:00).
+- Dawn-override cliff removed: while a shame mode is active, crossing the dawn threshold forces mode 5 throughout the overnight window with no hard-stop at 06:00, so the display no longer de-escalates mode 5 → mode 4 at sunrise (monotonic escalation). A late dawn threshold (>= 06:00) is now reachable.
+- `CC_INSOMNII_BEDTIME` / `CC_INSOMNII_DAWN` (and the equivalent config keys) are validated: an out-of-range or malformed value warns on stderr and falls back to the built-in default instead of silently becoming `00:00`, keeping the statusline clean.
+- Test coverage: the mode-5/dawn-override assertions now check the mode-5-exclusive decay block glyph (a mode-4 regression that merely differed could previously slip through), plus new coverage for `--version`/`-V`, `CC_INSOMNII_NOW` validation, the generalized midnight wrap, and bedtime/dawn validation.
+
 ## [0.2.0] - 2026-06-14
 
 ### Added

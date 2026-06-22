@@ -164,8 +164,8 @@ over `config.json`.
 | Variable                 | Default   | Description                                      |
 |--------------------------|-----------|--------------------------------------------------|
 | `CC_INSOMNII_HOME`       | auto      | Path to cc-insomnii install dir                  |
-| `CC_INSOMNII_BEDTIME`    | `23:00`   | Bedtime in HH:MM (24h)                           |
-| `CC_INSOMNII_DAWN`       | `04:00`   | Dawn threshold — triggers mode 5 regardless      |
+| `CC_INSOMNII_BEDTIME`    | `23:00`   | Bedtime in HH:MM (24h); evening/night recommended |
+| `CC_INSOMNII_DAWN`       | `04:00`   | Dawn threshold — forces mode 5 when up past it    |
 | `CC_INSOMNII_SHAME`      | `true`    | Enable shame messages                            |
 | `CC_INSOMNII_MOTIVATION` | `true`    | Enable morning motivation (07:00-15:59)          |
 | `CC_INSOMNII_RAINBOW`    | `true`    | Enable rainbow character-chase animation         |
@@ -180,6 +180,12 @@ over `config.json`.
 > ```bash
 > echo '{}' | CC_INSOMNII_NOW=02:00 CC_INSOMNII_BEDTIME=23:00 cc-insomnii
 > ```
+
+An invalid `CC_INSOMNII_BEDTIME` or `CC_INSOMNII_DAWN` (not `HH:MM`, or outside
+`00:00`–`23:59`) is rejected: cc-insomnii prints a warning to stderr and falls
+back to the built-in default (`23:00` for bedtime, `04:00` for dawn) so the
+statusline still renders cleanly. `CC_INSOMNII_NOW`, being a preview/testing
+knob, instead exits non-zero on a bad value.
 
 ### Custom shame messages
 
@@ -208,7 +214,16 @@ The `examples/` directory contains:
 | 2     | +1h to +2h past bedtime        | Adds underline to the shame text                          |
 | 3     | +2h to +3h past bedtime        | Adds a matrix-drip prefix, rapid blink                    |
 | 4     | +3h to +4h past bedtime        | Adds reverse pulse on odd seconds, strobe                 |
-| 5     | +4h past bedtime, or past dawn | Char-decay clock, three-glyph swarm, doom glyph set       |
+| 5     | +4h past bedtime, or past dawn while still up | Char-decay clock, three-glyph swarm, doom glyph set |
+
+Overnight shame assumes an **evening/night bedtime**. The elapsed counter wraps
+across midnight and runs until the ~06:00 morning cutoff, after which the dawn
+and motivation windows take over. While a shame mode is active, crossing the
+dawn threshold forces mode 5 (the override no longer hard-stops at 06:00, so the
+display never de-escalates back to mode 4 at sunrise). A bedtime set **at or
+after midnight but before ~06:00** (e.g. `00:30`, `02:00`) is a known
+limitation — the elapsed delta is inflated outside the overnight window; use an
+evening bedtime for accurate escalation.
 
 Dawn greeting (🌅, dawn threshold to 07:00): when no shame mode is active in
 that window — typically with shame disabled — a dim sunrise glyph and a quiet
