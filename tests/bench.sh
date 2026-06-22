@@ -71,7 +71,7 @@ bench() { # LABEL FN
   for (( i = 0; i < N; i++ )); do "$fn"; done
   end=$(_now_ms)
   total=$(( end - start ))
-  printf '  %-34s %6d ms / %4d = %3d ms/render\n' "$label" "$total" "$N" "$(( total / N ))"
+  printf '  %-34s %6d ms / %4d = %5d us/render\n' "$label" "$total" "$N" "$(( total * 1000 / N ))"
 }
 
 echo "cc-insomnii render benchmark ($N iterations each)"
