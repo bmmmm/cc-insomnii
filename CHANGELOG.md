@@ -5,7 +5,7 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [0.2.1] - 2026-06-22
 
 ### Fixed
 - `install.sh --after` no longer mangles a multi-argument wrapped command: the command is preserved as a single quoted token instead of being re-split on whitespace.
@@ -14,6 +14,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Test harness: `SKIP` is now gated correctly (a skipped test no longer counts as a pass), and `make bench` reports per-render time in microseconds.
 - `CC_INSOMNII_BEDTIME` / `CC_INSOMNII_DAWN` (and the equivalent config keys) are validated: an out-of-range or malformed value warns on stderr and falls back to the built-in default instead of silently becoming `00:00`, keeping the statusline clean.
 - Test coverage: the mode-5/dawn-override assertions now check the mode-5-exclusive decay block glyph (a mode-4 regression that merely differed could previously slip through), plus new coverage for `--version`/`-V`, `CC_INSOMNII_NOW` validation, the evening midnight-wrap (no-regression) and config resilience, and bedtime/dawn validation.
+
+### Documentation
+- Install paths in the README now match `install.sh` behaviour, the dawn greeting render mode is documented (man DESCRIPTION/MODES), and the overnight shame logic's evening-bedtime assumption is stated explicitly with its known limitation for midnight/very-early bedtimes.
 
 ## [0.2.0] - 2026-06-14
 
@@ -51,6 +54,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `install.sh` with `--prefix` and `--uninstall` flags
 - Test harness in `tests/run.sh` with `--summary` flag
 
-[Unreleased]: https://github.com/bmmmm/cc-insomnii/compare/v0.2.0...HEAD
+[0.2.1]: https://github.com/bmmmm/cc-insomnii/compare/v0.2.0...v0.2.1
 [0.2.0]: https://github.com/bmmmm/cc-insomnii/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/bmmmm/cc-insomnii/releases/tag/v0.1.0
