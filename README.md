@@ -200,10 +200,12 @@ over `config.json`.
 
 The toggle variables (`CC_INSOMNII_SHAME`, `CC_INSOMNII_MOTIVATION`,
 `CC_INSOMNII_RAINBOW`, `CC_INSOMNII_BREATHING`, `CC_INSOMNII_ASCII`,
-`CC_INSOMNII_ACCESSIBLE`, and their `config.json` equivalents) treat `false`,
-`0`, `no`, `off`, and `disabled` — in any case — as off. Any other value is on.
-The same spellings work in `config.json`, as a scalar (`"shame": "off"`) or
-nested (`"shame": { "enabled": false }`).
+`CC_INSOMNII_ACCESSIBLE`) treat `false`, `0`, `no`, `off`, and `disabled` — in
+any case — as off. Any other value is on. The four config-backed toggles
+(`shame`, `motivation`, `rainbow`, `breathing`) accept the same spellings in
+`config.json` too, as a scalar (`"shame": "off"`) or nested (`"shame": {
+"enabled": false }`); `CC_INSOMNII_ASCII` and `CC_INSOMNII_ACCESSIBLE` are
+environment-only and have no `config.json` key.
 
 **No-color and accessible output.** cc-insomnii honors the
 [`NO_COLOR`](https://no-color.org/) convention: when `NO_COLOR` is set to any

@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- Byte-identity gate as a runnable test. `tests/test_byte_identity.sh` sweeps
+  `CC_INSOMNII_NOW` over all 1440 minutes for representative bedtimes with every
+  feature OFF and asserts the rendered hash still matches the committed 0.3.0
+  baseline. It is opt-in (the suite SKIPs it unless `CC_INSOMNII_SWEEP` is set)
+  so it never slows `make test`; `make sweep` runs the full 7-bedtime release
+  gate. The invariant was previously only checked by hand.
+
+### Fixed
+- README no longer implies `CC_INSOMNII_ASCII` and `CC_INSOMNII_ACCESSIBLE` have
+  `config.json` equivalents — they are environment-only, as the same section
+  already stated. Only `shame`, `motivation`, `rainbow`, and `breathing` are
+  config-backed.
+- Man page: gave `CC_INSOMNII_THEME` an explicit `Default: vibe.` line to match
+  the rest of the ENVIRONMENT section.
+
 ## [0.4.0] - 2026-06-23
 
 A display-overhaul release in three layers — terminal robustness, real session
