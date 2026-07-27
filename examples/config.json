@@ -12,5 +12,8 @@
   },
   "breathing": {
     "enabled": true
+  },
+  "session_id": {
+    "enabled": false
   }
 }

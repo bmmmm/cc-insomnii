@@ -156,9 +156,15 @@ Create `~/.config/cc-insomnii/config.json` (or `$XDG_CONFIG_HOME/cc-insomnii/con
   "shame": { "enabled": true },
   "motivation": { "enabled": true },
   "rainbow": { "enabled": true },
-  "breathing": { "enabled": true }
+  "breathing": { "enabled": true },
+  "session_id": { "enabled": false }
 }
 ```
+
+`session_id` also accepts a bare scalar (`"session_id": true`), same as the
+other toggles. Unlike its session-data siblings (model/context/duration/cost,
+env-only), `session_id` is config.json-backed — flipping it takes effect on
+the next statusline render, no shell restart needed.
 
 See `examples/config.json` for the full reference with all keys.
 
@@ -200,13 +206,15 @@ over `config.json`.
 > ```
 
 The toggle variables (`CC_INSOMNII_SHAME`, `CC_INSOMNII_MOTIVATION`,
-`CC_INSOMNII_RAINBOW`, `CC_INSOMNII_BREATHING`, `CC_INSOMNII_ASCII`,
-`CC_INSOMNII_ACCESSIBLE`) treat `false`, `0`, `no`, `off`, and `disabled` — in
-any case — as off. Any other value is on. The four config-backed toggles
-(`shame`, `motivation`, `rainbow`, `breathing`) accept the same spellings in
-`config.json` too, as a scalar (`"shame": "off"`) or nested (`"shame": {
-"enabled": false }`); `CC_INSOMNII_ASCII` and `CC_INSOMNII_ACCESSIBLE` are
-environment-only and have no `config.json` key.
+`CC_INSOMNII_RAINBOW`, `CC_INSOMNII_BREATHING`, `CC_INSOMNII_SESSION_ID`,
+`CC_INSOMNII_ASCII`, `CC_INSOMNII_ACCESSIBLE`) treat `false`, `0`, `no`, `off`,
+and `disabled` — in any case — as off. Any other value is on. The five
+config-backed toggles (`shame`, `motivation`, `rainbow`, `breathing`,
+`session_id`) accept the same spellings in `config.json` too, as a scalar
+(`"shame": "off"`) or nested (`"shame": { "enabled": false }`);
+`CC_INSOMNII_ASCII` and `CC_INSOMNII_ACCESSIBLE` (and the other session-data
+toggles, model/context/duration/cost) are environment-only and have no
+`config.json` key.
 
 **No-color and accessible output.** cc-insomnii honors the
 [`NO_COLOR`](https://no-color.org/) convention: when `NO_COLOR` is set to any
@@ -238,7 +246,9 @@ the model badge is the one calm-mode (plain/motivation/dawn) fact.
 `CC_INSOMNII_SESSION_ID` shows the first 8 characters of `session_id`
 (`23:14 #a1b2c3d4`) right next to the clock, in every mode — a stable
 at-a-glance identifier for telling parallel sessions apart, not a resume
-target (`claude --resume` needs the full id). These are all environment-only.
+target (`claude --resume` needs the full id). Model/context/duration/cost are
+environment-only; `session_id` is also `config.json`-backed (see User config
+above), so it can be toggled without a shell restart.
 
 **Theming.** `CC_INSOMNII_THEME` swaps the whole palette — `vibe` (the default
 rainbow), `mono` (grayscale), `amber`, `matrix` (green), or `ocean` (blue).

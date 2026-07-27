@@ -54,9 +54,11 @@ _cfg_color=""
 _cfg_ascii="false"
 _cfg_accessible="false"
 
-# Session-data defaults (env-only; all OFF so the default render is unchanged).
-# These surface fields from the Claude Code statusline payload: the model name,
-# the context-window pressure, the session duration, and the dollar cost.
+# Session-data defaults (all OFF so the default render is unchanged). These
+# surface fields from the Claude Code statusline payload: the model name, the
+# context-window pressure, the session duration, the dollar cost, and the
+# session id. model/context/duration/cost are env-only; session_id is also
+# config.json-backed (see Layer 2 below) for a restart-free toggle.
 _cfg_model="false"
 _cfg_context="false"
 _cfg_duration="false"
@@ -83,6 +85,10 @@ if [[ -f "$_user_cfg" ]]; then
   # guard ("if type==object then .enabled else .") handles both {"enabled":false}
   # and scalar false/true without dropping a field and shifting the field-split below.
   # Split on US (0x1f), NOT tab — see note below.
+  # session_id joins this batch as the one session-data toggle that is also
+  # config.json-backed (its siblings model/context/duration/cost are env-only):
+  # config.json is re-read on every render, so flipping it takes effect on the
+  # next statusline update — no shell restart, unlike an env var export.
   _v=$(jq -r '
     [
       (.bedtime // ""),
@@ -90,19 +96,21 @@ if [[ -f "$_user_cfg" ]]; then
       (if (.shame|type)      == "object" then .shame.enabled      else .shame      end),
       (if (.motivation|type) == "object" then .motivation.enabled else .motivation end),
       (if (.rainbow|type)    == "object" then .rainbow.enabled    else .rainbow    end),
-      (if (.breathing|type)  == "object" then .breathing.enabled  else .breathing  end)
+      (if (.breathing|type)  == "object" then .breathing.enabled  else .breathing  end),
+      (if (.session_id|type) == "object" then .session_id.enabled else .session_id end)
     ] | map(if . == null then "" else tostring end) | join([31] | implode)
   ' "$_user_cfg" 2>/dev/null) || _v=""
   # Split on US (0x1f), NOT tab: tab is IFS-whitespace, so bash collapses runs of
   # it and trims leading ones — an empty bedtime/dawn would shift later fields and
   # land a toggle value in the wrong variable. US never appears in the values.
-  IFS=$'\x1f' read -r _u1 _u2 _u3 _u4 _u5 _u6 <<< "$_v"
+  IFS=$'\x1f' read -r _u1 _u2 _u3 _u4 _u5 _u6 _u7 <<< "$_v"
   [[ -n "$_u1" ]] && _cfg_bedtime="$_u1"
   [[ -n "$_u2" ]] && _cfg_dawn="$_u2"
   [[ -n "$_u3" ]] && _cfg_shame="$_u3"
   [[ -n "$_u4" ]] && _cfg_motivation="$_u4"
   [[ -n "$_u5" ]] && _cfg_rainbow="$_u5"
   [[ -n "$_u6" ]] && _cfg_breathing="$_u6"
+  [[ -n "$_u7" ]] && _cfg_session_id="$_u7"
 fi
 
 # --- Layer 3: user messages.json (override catalog) ---

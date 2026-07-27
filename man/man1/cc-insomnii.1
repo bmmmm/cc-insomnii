@@ -281,10 +281,28 @@ Example:
   "shame": { "enabled": true },
   "motivation": { "enabled": true },
   "rainbow": { "enabled": true },
-  "breathing": { "enabled": true }
+  "breathing": { "enabled": true },
+  "session_id": { "enabled": false }
 }
 .fi
 .RE
+.PP
+Each toggle accepts a bare scalar
+.RI ( "\[dq]shame\[dq]: false" )
+or the nested form shown above; both spellings are equivalent.
+.B session_id
+is the only session-data toggle backed by
+.IR config.json ") ("
+its siblings
+.BR CC_INSOMNII_MODEL ,
+.BR CC_INSOMNII_CONTEXT ,
+.BR CC_INSOMNII_DURATION ", and"
+.B CC_INSOMNII_COST
+are environment-only. Because
+.I config.json
+is re-read on every render, flipping
+.B session_id
+here takes effect on the next statusline update, with no shell restart.
 .PP
 See
 .I examples/config.json

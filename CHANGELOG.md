@@ -11,7 +11,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `CC_INSOMNII_SESSION_ID`: shows the first 8 characters of `session_id` next
   to the clock, in every mode. An at-a-glance identifier for telling parallel
   sessions apart, not a resume target (`claude --resume` needs the full id).
-  OFF by default, environment-only, like the other session-data toggles.
+  OFF by default. Unlike its session-data siblings (model/context/duration/
+  cost, environment-only), `session_id` is also `config.json`-backed (scalar
+  or nested `{"enabled":}`, same as shame/motivation/rainbow/breathing) —
+  config.json is re-read on every render, so toggling it needs no shell
+  restart, unlike an env var.
 - Byte-identity gate as a runnable test. `tests/test_byte_identity.sh` sweeps
   `CC_INSOMNII_NOW` over all 1440 minutes for representative bedtimes with every
   feature OFF and asserts the rendered hash still matches the committed 0.3.0

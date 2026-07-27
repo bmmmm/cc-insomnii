@@ -108,6 +108,26 @@ noid_out=$(printf '{}' | env \
   CC_INSOMNII_SESSION_ID=1 "$BIN" 2>&1 | _strip)
 _absent "sid absent-field" "#" "$noid_out"
 
+# --- session-id: also config.json-backed (scalar and nested {"enabled":}) ---
+CFG_HOME=$(mktemp -d)
+_cfg_render() { # <config-json-body>
+  printf '%s' "$1" > "$CFG_HOME/cc-insomnii/config.json"
+  printf '%s' "$PAYLOAD" | env \
+    -u CC_INSOMNII_HOME -u CC_INSOMNII_CONFIG -u CC_INSOMNII_MESSAGES \
+    -u CC_INSOMNII_SHAME -u CC_INSOMNII_MOTIVATION \
+    -u CC_INSOMNII_RAINBOW -u CC_INSOMNII_BREATHING -u CC_INSOMNII_DAWN \
+    -u CC_INSOMNII_MODEL -u CC_INSOMNII_CONTEXT -u CC_INSOMNII_DURATION \
+    -u CC_INSOMNII_COST -u CC_INSOMNII_COST_BUMP -u CC_INSOMNII_SESSION_ID \
+    XDG_CONFIG_HOME="$CFG_HOME" \
+    CC_INSOMNII_NOW=22:00 CC_INSOMNII_BEDTIME=23:00 \
+    "$BIN" 2>&1 | _strip
+}
+mkdir -p "$CFG_HOME/cc-insomnii"
+_contains "sid config scalar" "#a1b2c3d4" "$(_cfg_render '{"session_id":true}')"
+_contains "sid config nested" "#a1b2c3d4" "$(_cfg_render '{"session_id":{"enabled":true}}')"
+_absent   "sid config off"    "#a1b2c3d4" "$(_cfg_render '{"session_id":false}')"
+rm -rf "$CFG_HOME"
+
 # --- no leak: every feature OFF, rich payload == empty payload ---
 rich=$(_render 23:30)
 lean=$(printf '{}' | env \
