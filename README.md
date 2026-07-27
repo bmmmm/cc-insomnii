@@ -184,6 +184,7 @@ over `config.json`.
 | `CC_INSOMNII_DURATION`   | `false`   | Append the session duration (`cost.total_duration_ms`) to the clock in shame modes, e.g. `3h12m` |
 | `CC_INSOMNII_COST`       | `false`   | Append the session cost (`$X.XX`) in shame modes; a costly session also bumps the message tier |
 | `CC_INSOMNII_COST_BUMP`  | `5`       | Whole-dollar threshold at/above which `CC_INSOMNII_COST` bumps the shame message tier |
+| `CC_INSOMNII_SESSION_ID` | `false`   | Show the short (8-char) session id (`session_id`) next to the clock, in every mode |
 | `CC_INSOMNII_THEME`      | `vibe`    | Color theme: `vibe` (default), `mono`, `amber`, `matrix`, `ocean` |
 | `CC_INSOMNII_PALETTE`    | `classic` | `escalating` gives each shame mode its own color region; `classic` is the shared cycle |
 | `CC_INSOMNII_QUIET`      | (none)    | `HH:MM-HH:MM` window where shame is capped at mode 1 (no strobe/decay/swarm) |
@@ -233,8 +234,11 @@ in shame modes (`GO TO BED  $4.20`) and, past `CC_INSOMNII_COST_BUMP` dollars,
 escalates the shame one message tier — so an expensive 1 a.m. session reads as
 harshly as a free 4 a.m. one. The duration tag, context redline and cost appear
 in the shame modes (1–5), where the "look what you've done" evidence belongs;
-the model badge is the one calm-mode (plain/motivation/dawn) fact. These too are
-environment-only.
+the model badge is the one calm-mode (plain/motivation/dawn) fact.
+`CC_INSOMNII_SESSION_ID` shows the first 8 characters of `session_id`
+(`23:14 #a1b2c3d4`) right next to the clock, in every mode — a stable
+at-a-glance identifier for telling parallel sessions apart, not a resume
+target (`claude --resume` needs the full id). These are all environment-only.
 
 **Theming.** `CC_INSOMNII_THEME` swaps the whole palette — `vibe` (the default
 rainbow), `mono` (grayscale), `amber`, `matrix` (green), or `ocean` (blue).

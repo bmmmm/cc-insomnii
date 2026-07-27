@@ -62,6 +62,7 @@ _cfg_context="false"
 _cfg_duration="false"
 _cfg_cost="false"
 _cfg_cost_bump="5"        # dollars; a session at/above this bumps the shame tier
+_cfg_session_id="false"
 
 # Theming defaults (env-only). theme swaps the whole palette; palette=escalating
 # gives each shame mode its own colour region; quiet is an HH:MM-HH:MM window
@@ -124,6 +125,7 @@ _user_msgs="${XDG_CONFIG_HOME:-$HOME/.config}/cc-insomnii/messages.json"
 [[ -n "${CC_INSOMNII_DURATION:-}"   ]] && _cfg_duration="$CC_INSOMNII_DURATION"
 [[ -n "${CC_INSOMNII_COST:-}"       ]] && _cfg_cost="$CC_INSOMNII_COST"
 [[ -n "${CC_INSOMNII_COST_BUMP:-}"  ]] && _cfg_cost_bump="$CC_INSOMNII_COST_BUMP"
+[[ -n "${CC_INSOMNII_SESSION_ID:-}" ]] && _cfg_session_id="$CC_INSOMNII_SESSION_ID"
 [[ -n "${CC_INSOMNII_THEME:-}"      ]] && _cfg_theme="$CC_INSOMNII_THEME"
 [[ -n "${CC_INSOMNII_PALETTE:-}"    ]] && _cfg_palette="$CC_INSOMNII_PALETTE"
 [[ -n "${CC_INSOMNII_QUIET:-}"      ]] && _cfg_quiet="$CC_INSOMNII_QUIET"
@@ -153,6 +155,7 @@ _cfg_context=$(_normalize_toggle "$_cfg_context")
 _cfg_duration=$(_normalize_toggle "$_cfg_duration")
 _cfg_cost=$(_normalize_toggle "$_cfg_cost")
 [[ "$_cfg_cost_bump" =~ ^[0-9]+$ ]] || _cfg_cost_bump="5"
+_cfg_session_id=$(_normalize_toggle "$_cfg_session_id")
 
 # --- Robustness flags: color / glyph / animation suppression ---
 # Accessible mode is the strongest: it implies no color, ASCII glyphs, and no
@@ -236,12 +239,14 @@ CONFIG
        CC_INSOMNII_RAINBOW, CC_INSOMNII_BREATHING, CC_INSOMNII_COLOR, CC_INSOMNII_ASCII,
        CC_INSOMNII_ACCESSIBLE, CC_INSOMNII_MODEL, CC_INSOMNII_CONTEXT,
        CC_INSOMNII_DURATION, CC_INSOMNII_COST, CC_INSOMNII_COST_BUMP,
-       CC_INSOMNII_THEME, CC_INSOMNII_PALETTE, CC_INSOMNII_QUIET,
-       CC_INSOMNII_CONFIG, CC_INSOMNII_MESSAGES, CC_INSOMNII_HOME, CC_INSOMNII_NOW
+       CC_INSOMNII_SESSION_ID, CC_INSOMNII_THEME, CC_INSOMNII_PALETTE,
+       CC_INSOMNII_QUIET, CC_INSOMNII_CONFIG, CC_INSOMNII_MESSAGES,
+       CC_INSOMNII_HOME, CC_INSOMNII_NOW
   No-color: NO_COLOR / TERM=dumb / CC_INSOMNII_COLOR=never render without ANSI color.
        CC_INSOMNII_ACCESSIBLE=1 also drops glyphs-emoji and all animation.
-  Session: CC_INSOMNII_MODEL/CONTEXT/DURATION/COST surface payload fields (model
-       name, context redline, session duration, dollar cost). All OFF by default.
+  Session: CC_INSOMNII_MODEL/CONTEXT/DURATION/COST/SESSION_ID surface payload
+       fields (model name, context redline, session duration, dollar cost,
+       short session id). All OFF by default.
   Theming: CC_INSOMNII_THEME=vibe|mono|amber|matrix|ocean, CC_INSOMNII_PALETTE=
        classic|escalating, CC_INSOMNII_QUIET=HH:MM-HH:MM (cap shame at mode 1).
   File: $XDG_CONFIG_HOME/cc-insomnii/config.json (or ~/.config/cc-insomnii/config.json)
@@ -601,12 +606,13 @@ _breath_phase=$(( (_ts * 4) % 32 ))  # full cycle every 8 seconds
 # one of those features is enabled, so the default render is both byte-identical
 # and free of an extra jq invocation. Cost is read as integer cents — jq does the
 # float, bash stays integer-only (no bc/awk). Split on US (0x1f), never tab.
-_model_name=""; _cost_cents=0; _dur_ms=0; _ctx_pct=""; _ctx_exceeds=0
+_model_name=""; _cost_cents=0; _dur_ms=0; _ctx_pct=""; _ctx_exceeds=0; _session_id_raw=""
 _session_on=0
-[[ "$_cfg_model"    != "false" ]] && _session_on=1
-[[ "$_cfg_context"  != "false" ]] && _session_on=1
-[[ "$_cfg_duration" != "false" ]] && _session_on=1
-[[ "$_cfg_cost"     != "false" ]] && _session_on=1
+[[ "$_cfg_model"      != "false" ]] && _session_on=1
+[[ "$_cfg_context"    != "false" ]] && _session_on=1
+[[ "$_cfg_duration"   != "false" ]] && _session_on=1
+[[ "$_cfg_cost"       != "false" ]] && _session_on=1
+[[ "$_cfg_session_id" != "false" ]] && _session_on=1
 if (( _session_on )); then
   _session=$(printf '%s' "$_json" | jq -r '
     [ (.model.display_name // "" | gsub(([31] | implode); "")),
@@ -614,10 +620,11 @@ if (( _session_on )); then
       ((.cost.total_duration_ms // 0) | floor),
       (if (.context_window.used_percentage | type) == "number"
          then (.context_window.used_percentage | floor) else "" end),
-      (if .exceeds_200k_tokens == true then "1" else "0" end)
+      (if .exceeds_200k_tokens == true then "1" else "0" end),
+      (.session_id // "" | tostring)
     ] | map(tostring) | join([31] | implode)
   ' 2>/dev/null) || _session=""
-  IFS=$'\x1f' read -r _model_name _cost_cents _dur_ms _ctx_pct _ctx_exceeds <<< "$_session"
+  IFS=$'\x1f' read -r _model_name _cost_cents _dur_ms _ctx_pct _ctx_exceeds _session_id_raw <<< "$_session"
   [[ "$_cost_cents"  =~ ^[0-9]+$ ]] || _cost_cents=0
   [[ "$_dur_ms"      =~ ^[0-9]+$ ]] || _dur_ms=0
   [[ "$_ctx_pct"     =~ ^[0-9]+$ ]] || _ctx_pct=""
@@ -644,6 +651,10 @@ _cost_tag=""
 if [[ "$_cfg_cost" != "false" ]] && (( _cost_cents > 0 )); then
   _cost_tag=$(printf '$%d.%02d' "$(( _cost_cents / 100 ))" "$(( _cost_cents % 100 ))")
 fi
+_sid_tag=""
+if [[ "$_cfg_session_id" != "false" && -n "$_session_id_raw" && "$_session_id_raw" != "null" ]]; then
+  _sid_tag="#${_session_id_raw:0:8}"
+fi
 
 # --- Render ---
 _output=""
@@ -667,7 +678,7 @@ case "$_render_mode" in
       _sp_clr="${CYAN}"
     fi
     _msg0=$(_pick_message 0 "almost time…")
-    _output="${_sp_clr}${_sparkle_glyph}${RST} ${DIM}${_hhmm}${RST}  ${DIM}${CYAN}${_msg0}${RST}"
+    _output="${_sp_clr}${_sparkle_glyph}${RST} ${DIM}${_hhmm}${RST}${_sid_tag:+ ${DIM}${_sid_tag}${RST}}  ${DIM}${CYAN}${_msg0}${RST}"
     ;;
 
   # ---- MODES 1-5: shame escalation ----
@@ -783,27 +794,27 @@ case "$_render_mode" in
     # mode falls through to the single-glyph line and never references unset vars.
     if (( _vm >= 5 && ! _no_anim )); then
       # Glyph swarm: glyph1 <clock> glyph2<drip+shame>glyph3
-      _output="${_blink}${_glyph}${RST} ${_rainbow}  ${_glyph2}${_shame_block}${_glyph3}${RST}"
+      _output="${_blink}${_glyph}${RST} ${_rainbow}${_sid_tag:+ ${DIM}${_sid_tag}${RST}}  ${_glyph2}${_shame_block}${_glyph3}${RST}"
     else
-      _output="${_blink}${_glyph}${RST} ${_rainbow}  ${_shame_block}"
+      _output="${_blink}${_glyph}${RST} ${_rainbow}${_sid_tag:+ ${DIM}${_sid_tag}${RST}}  ${_shame_block}"
     fi
     ;;
 
   # ---- MOTIVATION: 07:00-15:59 ----
   motivation)
     _mot_text=$(_pick_message motivation "let's go")
-    _output="${DIM}${_sparkle_glyph} ${_hhmm}${RST}  ${CYAN}${_mot_text}${RST}${_model_badge:+  ${DIM}${_model_badge}${RST}}"
+    _output="${DIM}${_sparkle_glyph} ${_hhmm}${RST}${_sid_tag:+ ${DIM}${_sid_tag}${RST}}  ${CYAN}${_mot_text}${RST}${_model_badge:+  ${DIM}${_model_badge}${RST}}"
     ;;
 
   # ---- DAWN: 04:00-06:59 ----
   dawn)
     _dawn_text=$(_pick_message dawn "still here?")
-    _output="${DIM}${_glyph_dawn} ${_hhmm}${RST}  ${WHITE}${_dawn_text}${RST}${_model_badge:+  ${DIM}${_model_badge}${RST}}"
+    _output="${DIM}${_glyph_dawn} ${_hhmm}${RST}${_sid_tag:+ ${DIM}${_sid_tag}${RST}}  ${WHITE}${_dawn_text}${RST}${_model_badge:+  ${DIM}${_model_badge}${RST}}"
     ;;
 
   # ---- PLAIN: no shame, no special context ----
   plain)
-    _output="${DIM}${_glyph_moon} ${_hhmm}${RST}${_model_badge:+  ${DIM}${_model_badge}${RST}}"
+    _output="${DIM}${_glyph_moon} ${_hhmm}${RST}${_sid_tag:+ ${DIM}${_sid_tag}${RST}}${_model_badge:+  ${DIM}${_model_badge}${RST}}"
     ;;
 
 esac

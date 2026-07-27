@@ -212,6 +212,15 @@ Whole-dollar threshold at or above which
 bumps the shame message tier. Default:
 .BR 5 .
 .TP
+.B CC_INSOMNII_SESSION_ID
+Show the first 8 characters of
+.I session_id
+next to the clock, in every mode. An at-a-glance identifier for telling
+parallel sessions apart \(em not a resume target;
+.B claude --resume
+needs the full id. Default:
+.BR false .
+.TP
 .B CC_INSOMNII_THEME
 Color theme, selecting the whole palette set:
 .BR vibe " (default rainbow), " mono " (grayscale), " amber ", " matrix
